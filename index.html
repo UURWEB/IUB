@@ -1,0 +1,119 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+    function isAdmin() {
+      return signedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && userDoc().data.role == 'admin')
+      );
+    }
+    function ownsAccount(accountId) {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/accounts/$(accountId)) &&
+        get(/databases/$(database)/documents/accounts/$(accountId)).data.ownerUid == request.auth.uid;
+    }
+
+    match /admins/{uid} {
+      allow read: if signedIn() && (uid == request.auth.uid || isAdmin());
+      // Create admin docs manually in the Firebase console, not from the public app.
+      allow write: if false;
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn() && (uid == request.auth.uid || isAdmin());
+      // Public registration may only create normal users. Promote admins manually.
+      allow create: if isAdmin() || (signedIn()
+        && uid == request.auth.uid
+        && request.resource.data.role == 'user');
+      allow update: if isAdmin() || (signedIn()
+        && uid == request.auth.uid
+        && request.resource.data.role == resource.data.role);
+      allow delete: if isAdmin();
+    }
+
+    match /presence/{uid} {
+      allow read: if isAdmin() || (signedIn() && uid == request.auth.uid);
+      allow create, update: if signedIn() && uid == request.auth.uid;
+      allow delete: if isAdmin() || (signedIn() && uid == request.auth.uid);
+    }
+
+    match /adminLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      // Needed for the fixed admin footer Clear Log button.
+      allow delete: if isAdmin();
+      allow update: if false;
+    }
+
+    match /market/{docId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /stocks/{ticker} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /accounts/{accountId} {
+      allow read: if signedIn();
+      allow create: if isAdmin() || (signedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.balance == 0);
+      // Current client-side transfer/trading code needs balance writes.
+      // For fully tamper-proof cash, move transfers/trades to Cloud Functions and remove owner balance updates here.
+      allow update: if isAdmin() || (signedIn() && resource.data.ownerUid == request.auth.uid && request.resource.data.ownerUid == resource.data.ownerUid);
+      allow delete: if isAdmin();
+    }
+
+    match /transactions/{txId} {
+      allow read: if signedIn() && (isAdmin() || ownsAccount(resource.data.accountId));
+      allow create: if signedIn() && (isAdmin() || ownsAccount(request.resource.data.accountId));
+      allow update, delete: if isAdmin();
+    }
+
+    match /loans/{loanId} {
+      allow read: if signedIn() && (isAdmin() || ownsAccount(resource.data.accountId));
+      allow create: if signedIn()
+        && ownsAccount(request.resource.data.accountId)
+        && request.resource.data.status == 'pending';
+      allow update: if isAdmin() || (signedIn() && ownsAccount(resource.data.accountId));
+      allow delete: if isAdmin();
+    }
+
+    match /bills/{billId} {
+      allow read: if signedIn() && (isAdmin() || ownsAccount(resource.data.accountId));
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (signedIn() && ownsAccount(resource.data.accountId));
+    }
+
+    match /positions/{positionId} {
+      allow read: if signedIn() && (isAdmin() || resource.data.ownerUid == request.auth.uid);
+      allow create: if signedIn() && (isAdmin() || request.resource.data.ownerUid == request.auth.uid);
+      allow update, delete: if signedIn() && (isAdmin() || resource.data.ownerUid == request.auth.uid);
+    }
+
+    match /trades/{tradeId} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    match /watchlists/{watchId} {
+      allow read: if signedIn() && (isAdmin() || resource.data.ownerUid == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow update, delete: if signedIn() && (isAdmin() || resource.data.ownerUid == request.auth.uid);
+    }
+
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
