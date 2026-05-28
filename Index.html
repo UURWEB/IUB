@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UUR — Banking & Exchange</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:       #070b14;
+  --surface:  #0d1424;
+  --card:     #111a2e;
+  --border:   rgba(99,179,255,0.1);
+  --accent:   #3b82f6;
+  --accent2:  #60a5fa;
+  --green:    #22c55e;
+  --red:      #ef4444;
+  --amber:    #f59e0b;
+  --text:     #e2e8f0;
+  --muted:    #64748b;
+  --mono:     'DM Mono', monospace;
+  --sans:     'DM Sans', sans-serif;
+  --display:  'Syne', sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden}
+h1,h2,h3{font-family:var(--display)}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+
+/* ── Auth overlay ── */
+#auth-screen{position:fixed;inset:0;background:var(--bg);z-index:100;display:flex;align-items:center;justify-content:center;background-image:radial-gradient(ellipse at 30% 20%,rgba(59,130,246,0.08) 0%,transparent 60%),radial-gradient(ellipse at 70% 80%,rgba(16,185,129,0.05) 0%,transparent 60%)}
+.auth-card{width:100%;max-width:420px;padding:40px;background:var(--surface);border:1px solid var(--border);border-radius:20px;box-shadow:0 30px 60px rgba(0,0,0,0.5)}
+.auth-logo{font-family:var(--display);font-size:28px;font-weight:800;letter-spacing:-.02em;background:linear-gradient(135deg,#60a5fa,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px}
+.auth-sub{color:var(--muted);font-size:13px;margin-bottom:32px}
+.field label{display:block;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.field input{width:100%;padding:12px 14px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--sans);font-size:14px;outline:none;transition:border .2s}
+.field input:focus{border-color:rgba(59,130,246,0.5);box-shadow:0 0 0 3px rgba(59,130,246,0.1)}
+.field{margin-bottom:16px}
+.btn-primary{width:100%;padding:13px;background:var(--accent);border:none;border-radius:10px;color:#fff;font-family:var(--display);font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.02em}
+.btn-primary:hover{background:#2563eb;transform:translateY(-1px);box-shadow:0 6px 20px rgba(59,130,246,0.35)}
+.btn-primary:active{transform:translateY(0)}
+.btn-secondary{width:100%;padding:13px;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--accent2);font-family:var(--display);font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;margin-top:10px}
+.btn-secondary:hover{border-color:rgba(59,130,246,0.4);background:rgba(59,130,246,0.06)}
+.auth-error{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:10px 14px;color:#fca5a5;font-size:13px;margin-bottom:14px;display:none}
+.auth-note{color:var(--muted);font-size:11px;text-align:center;margin-top:16px}
+
+/* ── Top bar ── */
+#topbar{position:sticky;top:0;z-index:50;background:rgba(7,11,20,0.95);border-bottom:1px solid var(--border);backdrop-filter:blur(12px);padding:0 20px;height:52px;display:flex;align-items:center;gap:12px}
+.topbar-logo{font-family:var(--display);font-weight:800;font-size:18px;background:linear-gradient(135deg,#60a5fa,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-right:8px}
+.tab-btn{padding:6px 16px;border-radius:8px;border:1px solid transparent;font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--muted);background:transparent}
+.tab-btn.active{background:rgba(59,130,246,0.15);border-color:rgba(59,130,246,0.3);color:var(--accent2)}
+.tab-btn:hover:not(.active){color:var(--text)}
+.topbar-user{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted)}
+.role-badge{padding:2px 10px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.08em}
+.badge-admin{background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.35);color:var(--accent2)}
+.badge-user{background:rgba(100,116,139,0.15);border:1px solid rgba(100,116,139,0.3);color:var(--muted)}
+.badge-business{background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);color:#86efac}
+.btn-logout{padding:4px 12px;background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--muted);font-size:11px;cursor:pointer;transition:all .15s}
+.btn-logout:hover{border-color:rgba(239,68,68,0.4);color:#f87171}
+
+/* ── Market status bar ── */
+#market-bar{padding:6px 20px;background:var(--surface);border-bottom:1px solid var(--border);font-size:12px;display:flex;align-items:center;gap:16px;overflow-x:auto;white-space:nowrap}
+.market-status{font-weight:700;font-family:var(--mono)}
+.market-open{color:var(--green)}
+.market-closed{color:var(--red)}
+.ticker-chip{font-family:var(--mono);font-size:11px;color:var(--muted);padding:2px 8px;background:rgba(255,255,255,0.03);border-radius:4px;border:1px solid var(--border)}
+.ticker-chip span{font-weight:600;color:var(--text)}
+.tick-up{color:var(--green)}
+.tick-down{color:var(--red)}
+.tick-flat{color:var(--muted)}
+
+/* ── Layout ── */
+#app{display:none}
+.page{display:none;padding:24px 20px;max-width:1200px;margin:0 auto}
+.page.active{display:block}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+@media(max-width:768px){.grid-2,.grid-3{grid-template-columns:1fr}}
+
+/* ── Cards ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.card-title{font-family:var(--display);font-size:14px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.stat-big{font-family:var(--mono);font-size:32px;font-weight:500;letter-spacing:-.02em;color:var(--text);margin-bottom:4px}
+.stat-label{font-size:12px;color:var(--muted)}
+
+/* ── Buttons ── */
+.btn{padding:9px 18px;border-radius:9px;font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+.btn-blue{background:var(--accent);color:#fff}
+.btn-blue:hover{background:#2563eb}
+.btn-green{background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);color:#86efac}
+.btn-green:hover{background:rgba(34,197,94,0.25)}
+.btn-red{background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5}
+.btn-red:hover{background:rgba(239,68,68,0.25)}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted)}
+.btn-ghost:hover{border-color:rgba(59,130,246,0.35);color:var(--accent2)}
+.btn-sm{padding:6px 12px;font-size:12px;border-radius:7px}
+.btn-full{width:100%;display:block;text-align:center}
+button:disabled{opacity:0.5;cursor:not-allowed}
+
+/* ── Form elements ── */
+.form-row{display:flex;gap:10px;margin-bottom:12px;align-items:flex-end}
+.form-group{flex:1}
+.form-group label{display:block;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:9px;color:var(--text);font-family:var(--sans);font-size:13px;outline:none;transition:border .2s}
+.form-group input:focus,.form-group select:focus{border-color:rgba(59,130,246,0.5)}
+.form-group select option{background:var(--card)}
+.msg-error{color:#fca5a5;font-size:12px;margin-top:8px;padding:8px 12px;background:rgba(239,68,68,0.08);border-radius:7px;display:none}
+.msg-ok{color:#86efac;font-size:12px;margin-top:8px;padding:8px 12px;background:rgba(34,197,94,0.08);border-radius:7px;display:none}
+
+/* ── Table / list ── */
+.tx-list{display:flex;flex-direction:column;gap:1px}
+.tx-row{display:flex;align-items:center;padding:11px 0;border-bottom:1px solid var(--border);gap:12px}
+.tx-row:last-child{border-bottom:none}
+.tx-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.tx-in{background:rgba(34,197,94,0.12)}
+.tx-out{background:rgba(239,68,68,0.1)}
+.tx-neutral{background:rgba(99,179,255,0.1)}
+.tx-desc{flex:1;min-width:0}
+.tx-desc p{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tx-desc span{font-size:11px;color:var(--muted)}
+.tx-amt{font-family:var(--mono);font-size:13px;font-weight:500;text-align:right;white-space:nowrap}
+.tx-amt.pos{color:var(--green)}
+.tx-amt.neg{color:var(--red)}
+
+/* ── Stock rows ── */
+.stock-row{display:flex;align-items:center;padding:12px;border-radius:10px;cursor:pointer;border:1px solid transparent;transition:all .15s;gap:12px}
+.stock-row:hover,.stock-row.selected{background:rgba(59,130,246,0.06);border-color:rgba(59,130,246,0.2)}
+.stock-ticker{font-family:var(--mono);font-weight:500;font-size:14px;width:60px;flex-shrink:0}
+.stock-name{flex:1;font-size:13px;color:var(--muted)}
+.stock-price{font-family:var(--mono);font-size:14px;font-weight:500;text-align:right}
+.stock-chg{font-family:var(--mono);font-size:11px;width:60px;text-align:right}
+.chg-pos{color:var(--green)}
+.chg-neg{color:var(--red)}
+
+/* ── Loan / bill rows ── */
+.item-row{padding:12px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid var(--border);margin-bottom:8px}
+.item-row:last-child{margin-bottom:0}
+.item-row-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.item-row-name{font-size:14px;font-weight:600}
+.item-row-sub{font-size:11px;color:var(--muted);margin-top:3px}
+.badge-pending{background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);color:#fcd34d;padding:2px 9px;border-radius:6px;font-size:11px;font-weight:700}
+.badge-approved{background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);color:#86efac;padding:2px 9px;border-radius:6px;font-size:11px;font-weight:700}
+.badge-denied{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#fca5a5;padding:2px 9px;border-radius:6px;font-size:11px;font-weight:700}
+.badge-overdue{background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);color:#fca5a5;padding:2px 9px;border-radius:6px;font-size:11px;font-weight:700}
+
+/* ── Admin panel ── */
+.admin-section{background:rgba(59,130,246,0.04);border:1px solid rgba(59,130,246,0.15);border-radius:14px;padding:18px;margin-top:20px}
+.admin-section-title{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(96,165,250,0.7);margin-bottom:14px;display:flex;align-items:center;gap:6px}
+
+/* ── Empty state ── */
+.empty{text-align:center;padding:32px;color:var(--muted);font-size:13px}
+.empty-icon{font-size:28px;margin-bottom:8px}
+
+/* ── Toast ── */
+#toast{position:fixed;bottom:24px;right:24px;z-index:999;padding:12px 18px;border-radius:10px;font-size:13px;font-weight:500;transform:translateY(80px);opacity:0;transition:all .3s;pointer-events:none}
+#toast.show{transform:translateY(0);opacity:1}
+#toast.toast-ok{background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.4);color:#86efac}
+#toast.toast-err{background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);color:#fca5a5}
+
+/* ── Modal ── */
+#modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+#modal-overlay.open{display:flex}
+#modal-box{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:28px;width:100%;max-width:440px;max-height:90vh;overflow-y:auto}
+.modal-title{font-family:var(--display);font-size:18px;font-weight:800;margin-bottom:4px}
+.modal-sub{color:var(--muted);font-size:13px;margin-bottom:22px}
+.modal-actions{display:flex;gap:10px;margin-top:20px}
+.modal-actions .btn{flex:1}
+
+/* ── Loading ── */
+.spinner{width:18px;height:18px;border:2px solid rgba(59,130,246,0.2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;display:inline-block;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Divider ── */
+.divider{height:1px;background:var(--border);margin:18px 0}
+</style>
+</head>
+<body>
+
+<!-- ═══ AUTH SCREEN ═══ -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">UUR</div>
+    <div class="auth-sub">Banking &amp; Central Stock Exchange</div>
+    <div id="auth-error" class="auth-error"></div>
+    <div class="field">
+      <label>Username</label>
+      <input id="auth-user" type="text" placeholder="e.g. CowboyJake" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input id="auth-pass" type="password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn-primary" onclick="doLogin()">Sign In</button>
+    <button class="btn-secondary" onclick="doRegister()">Create Account</button>
+    <p class="auth-note">No email required · username &amp; password only</p>
+  </div>
+</div>
+
+<!-- ═══ MAIN APP ═══ -->
+<div id="app">
+  <!-- Top bar -->
+  <div id="topbar">
+    <span class="topbar-logo">UUR</span>
+    <button class="tab-btn active" id="tab-bank" onclick="switchTab('bank')">🏦 Bank</button>
+    <button class="tab-btn" id="tab-exchange" onclick="switchTab('exchange')">📈 Exchange</button>
+    <div class="topbar-user">
+      <span id="topbar-username" style="font-weight:600;color:var(--text)"></span>
+      <span id="topbar-badge" class="role-badge"></span>
+      <button class="btn-logout" onclick="doLogout()">Sign Out</button>
+    </div>
+  </div>
+
+  <!-- Market ticker bar -->
+  <div id="market-bar">
+    <span id="market-status" class="market-status"></span>
+    <div id="ticker-strip"></div>
+  </div>
+
+  <!-- Bank page -->
+  <div id="page-bank" class="page active">
+    <div class="grid-2" style="margin-bottom:20px">
+      <!-- Account card -->
+      <div class="card" id="account-card">
+        <div class="card-header"><span class="card-title">Your Account</span></div>
+        <div id="account-selector-wrap"></div>
+        <div class="stat-big" id="balance-display">$0.00</div>
+        <div class="stat-label" id="account-name-display">Loading…</div>
+        <div class="divider"></div>
+        <div id="quick-stats" style="display:flex;gap:20px;flex-wrap:wrap"></div>
+      </div>
+      <!-- Transfer card -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">Send Money</span></div>
+        <div class="form-group" style="margin-bottom:12px">
+          <label>To Account</label>
+          <select id="transfer-to"></select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Amount</label>
+            <input id="transfer-amount" type="number" placeholder="0.00" min="0.01" step="0.01">
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:12px">
+          <label>Note (optional)</label>
+          <input id="transfer-note" type="text" placeholder="e.g. Rent payment">
+        </div>
+        <button class="btn btn-blue btn-full" onclick="doTransfer()">Send Money</button>
+        <div id="transfer-msg" class="msg-error"></div>
+      </div>
+    </div>
+
+    <!-- Transactions -->
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-header">
+        <span class="card-title">Transactions</span>
+        <span id="tx-count" style="font-size:11px;color:var(--muted)"></span>
+      </div>
+      <div id="tx-list"><div class="empty"><div class="empty-icon">📋</div>No transactions yet</div></div>
+    </div>
+
+    <!-- Loans & Bills row -->
+    <div class="grid-2" style="margin-bottom:20px">
+      <!-- Loans -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">Loans</span></div>
+        <div id="loans-list"></div>
+        <div class="divider"></div>
+        <div id="loan-request-section">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Request a loan — an admin will review it.</div>
+          <div class="form-row">
+            <div class="form-group"><label>Amount</label><input id="loan-amount" type="number" placeholder="1000" min="1"></div>
+            <div class="form-group"><label>Rate %</label><input id="loan-rate" type="number" placeholder="5" min="0" step="0.1"></div>
+          </div>
+          <div class="form-group" style="margin-bottom:12px"><label>Due Date</label><input id="loan-due" type="date"></div>
+          <button class="btn btn-blue btn-full" onclick="doRequestLoan()">Request Loan</button>
+        </div>
+      </div>
+      <!-- Bills -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">Bills</span></div>
+        <div id="bills-list"></div>
+        <div id="bills-empty" class="empty" style="display:none"><div class="empty-icon">✅</div>No bills</div>
+      </div>
+    </div>
+
+    <!-- Admin: Bank controls -->
+    <div id="admin-bank-section" class="admin-section" style="display:none">
+      <div class="admin-section-title">⚡ Admin — Bank Controls</div>
+
+      <!-- Account switcher for admin -->
+      <div class="form-row" style="margin-bottom:16px">
+        <div class="form-group"><label>Viewing Account</label><select id="admin-account-select" onchange="adminSwitchAccount(this.value)"></select></div>
+      </div>
+      <div class="divider"></div>
+
+      <!-- Deposit -->
+      <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">Add Funds</div>
+      <div class="form-row">
+        <div class="form-group"><label>Amount</label><input id="deposit-amount" type="number" placeholder="500" min="0.01"></div>
+        <div class="form-group"><label>Description</label><input id="deposit-desc" type="text" placeholder="Salary"></div>
+        <button class="btn btn-green" style="white-space:nowrap;margin-top:20px" onclick="adminDeposit()">Add Funds</button>
+      </div>
+      <div class="divider"></div>
+
+      <!-- Add bill -->
+      <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">Add Bill</div>
+      <div class="form-row">
+        <div class="form-group"><label>Bill Name</label><input id="bill-name" type="text" placeholder="Rent"></div>
+        <div class="form-group"><label>Amount</label><input id="bill-amount" type="number" placeholder="1200" min="0.01"></div>
+        <div class="form-group"><label>Due Date</label><input id="bill-due" type="date"></div>
+        <button class="btn btn-ghost" style="white-space:nowrap;margin-top:20px" onclick="adminAddBill()">Add Bill</button>
+      </div>
+      <div class="divider"></div>
+
+      <!-- Pending loan approvals -->
+      <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">Pending Loan Requests</div>
+      <div id="admin-pending-loans"><div style="font-size:12px;color:var(--muted)">No pending requests</div></div>
+    </div>
+  </div>
+
+  <!-- Exchange page -->
+  <div id="page-exchange" class="page">
+    <div class="grid-2" style="margin-bottom:20px">
+      <!-- Market list -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Market</span>
+          <input id="stock-filter" type="text" placeholder="Search…" style="padding:5px 10px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;outline:none;width:120px">
+        </div>
+        <div id="stocks-list"></div>
+      </div>
+      <!-- Trade panel -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title" id="trade-ticker-label">Select a Stock</span>
+          <span id="trade-price-label" style="font-family:var(--mono);font-size:18px;font-weight:500"></span>
+        </div>
+        <div id="trade-panel">
+          <div class="empty"><div class="empty-icon">👆</div>Select a stock from the list</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Portfolio -->
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-header">
+        <span class="card-title">My Portfolio</span>
+        <span id="portfolio-value" style="font-family:var(--mono);font-size:14px;color:var(--accent2)"></span>
+      </div>
+      <div id="portfolio-list"><div class="empty"><div class="empty-icon">📊</div>No positions yet</div></div>
+    </div>
+
+    <!-- Admin: Stock controls -->
+    <div id="admin-stock-section" class="admin-section" style="display:none">
+      <div class="admin-section-title">⚡ Admin — Stock Controls</div>
+      <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">Add / Edit Stock</div>
+      <div class="form-row">
+        <div class="form-group"><label>Ticker</label><input id="s-ticker" type="text" placeholder="ACME" style="text-transform:uppercase"></div>
+        <div class="form-group"><label>Name</label><input id="s-name" type="text" placeholder="Acme Corp"></div>
+        <div class="form-group"><label>Price</label><input id="s-price" type="number" placeholder="100" min="0.01" step="0.01"></div>
+        <div class="form-group"><label>Issuer Account</label><select id="s-issuer"></select></div>
+        <button class="btn btn-blue" style="white-space:nowrap;margin-top:20px" onclick="adminSaveStock()">Save</button>
+      </div>
+      <div class="divider"></div>
+      <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">Manage Existing Stocks</div>
+      <div id="admin-stocks-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast & Modal -->
+<div id="toast"></div>
+<div id="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div id="modal-box">
+    <div class="modal-title" id="modal-title"></div>
+    <div class="modal-sub" id="modal-sub"></div>
+    <div id="modal-body"></div>
+    <div class="modal-actions" id="modal-actions"></div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════
+//  CONFIGURATION
+// ════════════════════════════════════════════════════════
+const FB_CONFIG = {
+  apiKey:            "AIzaSyChstZGtH4hIExL_gPcUji7aoG5j0NKhmc",
+  authDomain:        "uurweb.firebaseapp.com",
+  projectId:         "uurweb",
+  storageBucket:     "uurweb.firebasestorage.app",
+  messagingSenderId: "239623573104",
+  appId:             "1:239623573104:web:191687b4475eb5f59c6eb5"
+};
+const ADMINS      = ['minekid123','adamenek','purpleaki123'];
+const FAKE_DOMAIN = '@uurweb.rp';
+
+// ════════════════════════════════════════════════════════
+//  FIREBASE INIT
+// ════════════════════════════════════════════════════════
+firebase.initializeApp(FB_CONFIG);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+// ════════════════════════════════════════════════════════
+//  APP STATE  (no localStorage — all Firestore)
+// ════════════════════════════════════════════════════════
+const G = {
+  user:        null,
+  username:    '',
+  role:        'user',
+  accountId:   null,
+  viewAccountId: null,   // what admin is currently viewing
+  stocks:      {},       // ticker → doc
+  positions:   {},       // ticker → position doc
+  allAccounts: [],       // admin only
+  unsubs:      [],       // active onSnapshot unsubscribers
+  selectedTicker: null,
+};
+
+// ════════════════════════════════════════════════════════
+//  UTILITIES
+// ════════════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+const fmt = n => Number(n||0).toLocaleString('en-US',{style:'currency',currency:'USD'});
+const fmtDate = s => s ? new Date(s).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+const esc = s => String(s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const now8601 = () => new Date().toISOString();
+
+let toastTimer;
+function toast(msg, ok=true) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'show ' + (ok ? 'toast-ok' : 'toast-err');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className = '', 3500);
+}
+
+function showModal(title, sub, bodyHTML, actions) {
+  $('modal-title').textContent = title;
+  $('modal-sub').textContent   = sub || '';
+  $('modal-body').innerHTML    = bodyHTML || '';
+  $('modal-actions').innerHTML = actions || '<button class="btn btn-ghost" onclick="closeModal()">Close</button>';
+  $('modal-overlay').classList.add('open');
+}
+function closeModal() { $('modal-overlay').classList.remove('open'); }
+
+function isMarketOpen() {
+  const n = new Date();
+  const yr = n.getFullYear();
+  const m3 = new Date(yr,2,1); const dst1 = new Date(yr,2,(7-m3.getDay()+1)%7+8); dst1.setHours(2);
+  const m11= new Date(yr,10,1); const dst2 = new Date(yr,10,(7-m11.getDay())%7+1); dst2.setHours(2);
+  const off = (n>=dst1&&n<dst2)?-300:-360;
+  const cst = new Date(n.getTime()+(n.getTimezoneOffset()+off)*60000);
+  const d=cst.getDay(), m=cst.getHours()*60+cst.getMinutes();
+  return d>=1&&d<=5&&m>=600&&m<960;
+}
+
+function stopAll() {
+  G.unsubs.forEach(fn=>fn());
+  G.unsubs = [];
+}
+
+// ════════════════════════════════════════════════════════
+//  AUTH
+// ════════════════════════════════════════════════════════
+function validateUN(u) {
+  if(!u||u.length<2) return 'Username must be at least 2 characters.';
+  if(u.length>30)     return 'Username must be 30 characters or fewer.';
+  if(!/^[a-z0-9_]+$/.test(u)) return 'Only letters, numbers, and underscores allowed.';
+  return null;
+}
+
+async function doLogin() {
+  const u = ($('auth-user').value||'').trim().toLowerCase();
+  const p = $('auth-pass').value||'';
+  const e = validateUN(u); if(e){showAuthErr(e);return;}
+  if(!p){showAuthErr('Enter your password.');return;}
+  setAuthLoading(true);
+  try { await auth.signInWithEmailAndPassword(u+FAKE_DOMAIN,p); }
+  catch(err){
+    setAuthLoading(false);
+    const c=err.code;
+    showAuthErr(c==='auth/user-not-found'||c==='auth/invalid-credential'?'Username not found. Check spelling or create an account.':c==='auth/wrong-password'?'Wrong password.':c==='auth/too-many-requests'?'Too many attempts — wait a moment.':err.message||'Sign in failed.');
+  }
+}
+
+async function doRegister() {
+  const u = ($('auth-user').value||'').trim().toLowerCase();
+  const p = $('auth-pass').value||'';
+  const e = validateUN(u); if(e){showAuthErr(e);return;}
+  if(!p||p.length<6){showAuthErr('Password must be at least 6 characters.');return;}
+  setAuthLoading(true);
+  try {
+    const cred = await auth.createUserWithEmailAndPassword(u+FAKE_DOMAIN,p);
+    // Create Firestore user profile
+    const role = ADMINS.includes(u) ? 'admin' : 'user';
+    await db.collection('users').doc(cred.user.uid).set({username:u, role, createdAt:now8601()});
+    // Create bank account
+    const accRef = db.collection('accounts').doc();
+    await accRef.set({name:u, ownerUid:cred.user.uid, ownerUsername:u, balance:0, createdAt:now8601()});
+    await db.collection('users').doc(cred.user.uid).update({accountId:accRef.id});
+    toast('Account created! Welcome, ' + u);
+  } catch(err){
+    setAuthLoading(false);
+    showAuthErr(err.code==='auth/email-already-in-use'?'That username is already taken.':err.message||'Registration failed.');
+  }
+}
+
+async function doLogout() {
+  stopAll();
+  await auth.signOut();
+}
+
+function showAuthErr(msg) { const e=$('auth-error'); e.textContent=msg; e.style.display='block'; }
+function clearAuthErr()    { const e=$('auth-error'); e.style.display='none'; }
+function setAuthLoading(on){ const b=document.querySelectorAll('#auth-screen button'); b.forEach(x=>{x.disabled=on;}); }
+
+document.querySelectorAll('#auth-screen input').forEach(i=>i.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();}));
+$('auth-user').addEventListener('input',clearAuthErr);
+$('auth-pass').addEventListener('input',clearAuthErr);
+
+// ════════════════════════════════════════════════════════
+//  AUTH STATE HANDLER
+// ════════════════════════════════════════════════════════
+auth.onAuthStateChanged(async user => {
+  if (!user) {
+    stopAll();
+    $('auth-screen').style.display='flex';
+    $('app').style.display='none';
+    setAuthLoading(false);
+    return;
+  }
+  G.user = user;
+  // Load user profile
+  let profile = (await db.collection('users').doc(user.uid).get()).data();
+  if (!profile) {
+    // Legacy account — create profile
+    const u = user.email.split('@')[0];
+    const role = ADMINS.includes(u) ? 'admin' : 'user';
+    profile = {username:u, role, createdAt:now8601()};
+    await db.collection('users').doc(user.uid).set(profile);
+  }
+  // Ensure admin role is correct
+  const expectedRole = ADMINS.includes(profile.username) ? 'admin' : (profile.role||'user');
+  if (profile.role !== expectedRole) {
+    await db.collection('users').doc(user.uid).update({role:expectedRole});
+    profile.role = expectedRole;
+  }
+  G.username = profile.username;
+  G.role     = profile.role;
+  G.accountId= profile.accountId||null;
+
+  // Ensure bank account exists
+  if (!G.accountId) {
+    const existing = await db.collection('accounts').where('ownerUid','==',user.uid).limit(1).get();
+    if (!existing.empty) {
+      G.accountId = existing.docs[0].id;
+      await db.collection('users').doc(user.uid).update({accountId:G.accountId});
+    } else {
+      const accRef = db.collection('accounts').doc();
+      await accRef.set({name:G.username, ownerUid:user.uid, ownerUsername:G.username, balance:0, createdAt:now8601()});
+      G.accountId = accRef.id;
+      await db.collection('users').doc(user.uid).update({accountId:G.accountId});
+    }
+  }
+  G.viewAccountId = G.accountId;
+
+  // Show app
+  $('auth-screen').style.display='none';
+  $('app').style.display='block';
+  $('topbar-username').textContent = G.username;
+  const badge = $('topbar-badge');
+  badge.textContent = G.role.toUpperCase();
+  badge.className = 'role-badge badge-'+G.role;
+
+  // Show admin controls
+  if(G.role==='admin'){
+    $('admin-bank-section').style.display='block';
+    $('admin-stock-section').style.display='block';
+  }
+
+  subscribeAll();
+  renderMarketStatus();
+  setInterval(renderMarketStatus, 60000);
+});
+
+// ════════════════════════════════════════════════════════
+//  SUBSCRIPTIONS  (real-time Firestore listeners)
+// ════════════════════════════════════════════════════════
+function subscribeAll() {
+  stopAll();
+
+  // 1. Stocks — everyone sees same prices
+  G.unsubs.push(
+    db.collection('stocks').onSnapshot(snap => {
+      G.stocks = {};
+      snap.forEach(d => { G.stocks[d.id] = {...d.data(), id:d.id}; });
+      renderStockList();
+      renderTickerBar();
+      if(G.selectedTicker) renderTradePanel(G.selectedTicker);
+      if(G.role==='admin') renderAdminStocks();
+    })
+  );
+
+  // 2. Current account
+  subAccount(G.viewAccountId);
+
+  // 3. Positions — user's own portfolio
+  G.unsubs.push(
+    db.collection('positions')
+      .where('ownerUsername','==',G.username)
+      .onSnapshot(snap => {
+        G.positions = {};
+        snap.forEach(d => { G.positions[d.data().ticker] = {...d.data(), id:d.id}; });
+        renderPortfolio();
+        if(G.selectedTicker) renderTradePanel(G.selectedTicker);
+      })
+  );
+
+  // 4. Admin extras
+  if (G.role === 'admin') {
+    // All accounts for selector
+    G.unsubs.push(
+      db.collection('accounts').onSnapshot(snap => {
+        G.allAccounts = snap.docs.map(d=>({...d.data(),id:d.id}));
+        renderAdminAccountSelector();
+        renderTransferSelector(); // update transfer targets too
+        if(G.role==='admin') renderAdminStockIssuerSelect();
+      })
+    );
+    // Pending loans across all accounts
+    G.unsubs.push(
+      db.collection('loans')
+        .where('status','==','pending')
+        .onSnapshot(snap => {
+          renderAdminPendingLoans(snap.docs.map(d=>({...d.data(),id:d.id})));
+        })
+    );
+  } else {
+    // Non-admin: load all accounts just for transfer selector
+    db.collection('accounts').get().then(snap => {
+      G.allAccounts = snap.docs.map(d=>({...d.data(),id:d.id}));
+      renderTransferSelector();
+    });
+  }
+}
+
+function subAccount(accountId) {
+  // Remove old account/tx/loan/bill subs (last 4)
+  // Simple: just re-sub (listeners auto-cancel via unsubs)
+  if (!accountId) return;
+
+  // Account balance
+  G.unsubs.push(
+    db.collection('accounts').doc(accountId).onSnapshot(doc => {
+      if(!doc.exists) return;
+      const a = {...doc.data(), id:doc.id};
+      $('balance-display').textContent = fmt(a.balance);
+      $('account-name-display').textContent = a.name;
+      renderQuickStats(a);
+    })
+  );
+
+  // Transactions (last 50, sorted client-side)
+  G.unsubs.push(
+    db.collection('transactions')
+      .where('accountId','==',accountId)
+      .limit(50)
+      .onSnapshot(snap => {
+        const txs = snap.docs.map(d=>({...d.data(),id:d.id}))
+          .sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+        renderTransactions(txs);
+      })
+  );
+
+  // Loans
+  G.unsubs.push(
+    db.collection('loans')
+      .where('accountId','==',accountId)
+      .onSnapshot(snap => {
+        const loans = snap.docs.map(d=>({...d.data(),id:d.id}));
+        renderLoans(loans);
+      })
+  );
+
+  // Bills
+  G.unsubs.push(
+    db.collection('bills')
+      .where('accountId','==',accountId)
+      .onSnapshot(snap => {
+        const bills = snap.docs.map(d=>({...d.data(),id:d.id}));
+        renderBills(bills);
+      })
+  );
+}
+
+// ════════════════════════════════════════════════════════
+//  TAB SWITCHING
+// ════════════════════════════════════════════════════════
+function switchTab(tab) {
+  ['bank','exchange'].forEach(t => {
+    $(t==='bank'?'page-bank':'page-exchange').classList.toggle('active', t===tab);
+    $('tab-'+t).classList.toggle('active', t===tab);
+  });
+}
+
+// ════════════════════════════════════════════════════════
+//  MARKET STATUS BAR
+// ════════════════════════════════════════════════════════
+function renderMarketStatus() {
+  const open = isMarketOpen();
+  $('market-status').innerHTML = open
+    ? '<span class="market-open">● MARKET OPEN</span>'
+    : '<span class="market-closed">● MARKET CLOSED</span>';
+}
+
+function renderTickerBar() {
+  const tickers = Object.values(G.stocks);
+  if(!tickers.length) { $('ticker-strip').innerHTML=''; return; }
+  $('ticker-strip').innerHTML = tickers.map(s => {
+    const chg = s.previousPrice ? ((s.price-s.previousPrice)/s.previousPrice*100) : 0;
+    const cls = chg>0?'tick-up':chg<0?'tick-down':'tick-flat';
+    const arrow = chg>0?'▲':chg<0?'▼':'–';
+    return `<span class="ticker-chip"><b>${esc(s.id)}</b> <span class="${cls}">${fmt(s.price)} ${arrow}${Math.abs(chg).toFixed(1)}%</span></span>`;
+  }).join(' ');
+}
+
+// ════════════════════════════════════════════════════════
+//  BANK RENDERING
+// ════════════════════════════════════════════════════════
+function renderQuickStats(account) {
+  // Show in the quick-stats div
+}
+
+function renderTransactions(txs) {
+  const list = $('tx-list');
+  $('tx-count').textContent = txs.length ? `${txs.length} records` : '';
+  if(!txs.length) { list.innerHTML='<div class="empty"><div class="empty-icon">📋</div>No transactions yet</div>'; return; }
+  const typeIcon = {deposit:'💰',withdrawal:'💸',transfer_in:'➡️',transfer_out:'⬅️',loan_disbursement:'🏦',loan_repayment:'✅',stock_purchase:'📈',stock_sale:'💹',bill_payment:'🧾',salary:'💼'};
+  const typeClass = {deposit:'tx-in',transfer_in:'tx-in',loan_disbursement:'tx-in',stock_sale:'tx-in',salary:'tx-in',withdrawal:'tx-out',transfer_out:'tx-out',loan_repayment:'tx-out',stock_purchase:'tx-out',bill_payment:'tx-out'};
+  list.innerHTML = '<div class="tx-list">' + txs.slice(0,50).map(tx => {
+    const isCredit = ['deposit','transfer_in','loan_disbursement','stock_sale','salary'].includes(tx.type);
+    return `<div class="tx-row">
+      <div class="tx-icon ${typeClass[tx.type]||'tx-neutral'}">${typeIcon[tx.type]||'💳'}</div>
+      <div class="tx-desc"><p>${esc(tx.description||tx.type)}</p><span>${fmtDate(tx.createdAt)}</span></div>
+      <div class="tx-amt ${isCredit?'pos':'neg'}">${isCredit?'+':'−'}${fmt(Math.abs(tx.amount))}</div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+function renderLoans(loans) {
+  const el = $('loans-list');
+  const active = loans.filter(l=>l.status==='active'||l.status==='approved');
+  const pending = loans.filter(l=>l.status==='pending');
+  if(!loans.length) { el.innerHTML='<div class="empty" style="padding:12px 0"><div class="empty-icon">🏦</div>No loans</div>'; return; }
+  el.innerHTML = loans.map(l => {
+    const overdue = l.status==='active' && l.dueDate && new Date(l.dueDate) < new Date();
+    const badge = l.status==='pending'?'badge-pending':l.status==='denied'?'badge-denied':overdue?'badge-overdue':'badge-approved';
+    const label = overdue?'OVERDUE':l.status.toUpperCase();
+    let actions = '';
+    if(l.status==='active') actions=`<div class="form-row" style="margin-top:10px">
+      <div class="form-group"><input type="number" id="repay-${l.id}" placeholder="Amount" min="0.01" step="0.01"></div>
+      <button class="btn btn-green btn-sm" onclick="doRepayLoan('${l.id}')">Repay</button>
+    </div>`;
+    return `<div class="item-row">
+      <div class="item-row-head">
+        <div><div class="item-row-name">${fmt(l.principal)} @ ${l.interestRate}% APR</div>
+        <div class="item-row-sub">Balance: ${fmt(l.balance)} · Due: ${fmtDate(l.dueDate)}</div></div>
+        <span class="${badge}">${label}</span>
+      </div>${actions}
+    </div>`;
+  }).join('');
+}
+
+function renderBills(bills) {
+  const el = $('bills-list');
+  const empty = $('bills-empty');
+  const unpaid = bills.filter(b=>!b.paid);
+  if(!unpaid.length) { el.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  const today = new Date();
+  el.innerHTML = unpaid.map(b => {
+    const overdue = b.dueDate && new Date(b.dueDate) < today;
+    return `<div class="item-row">
+      <div class="item-row-head">
+        <div><div class="item-row-name">${esc(b.name)}</div>
+        <div class="item-row-sub">${fmt(b.amount)} · Due: ${fmtDate(b.dueDate)}${overdue?' <span style="color:var(--red)">OVERDUE</span>':''}</div></div>
+        <button class="btn btn-blue btn-sm" onclick="doPayBill('${b.id}',${b.amount})">Pay</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderTransferSelector() {
+  const sel = $('transfer-to');
+  const others = G.allAccounts.filter(a=>a.id!==G.viewAccountId);
+  sel.innerHTML = others.length
+    ? others.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join('')
+    : '<option value="">No other accounts</option>';
+}
+
+function renderAdminAccountSelector() {
+  const sel = $('admin-account-select');
+  sel.innerHTML = G.allAccounts.map(a=>`<option value="${a.id}" ${a.id===G.viewAccountId?'selected':''}>${esc(a.name)}</option>`).join('');
+}
+
+function adminSwitchAccount(accountId) {
+  G.viewAccountId = accountId;
+  // Re-subscribe to new account data
+  // Stop only the account-specific subs (tricky without tagging them)
+  // Simple approach: re-run full subscribeAll
+  subscribeAll();
+  renderTransferSelector();
+}
+
+function renderAdminPendingLoans(loans) {
+  const el = $('admin-pending-loans');
+  if(!loans.length) { el.innerHTML='<div style="font-size:12px;color:var(--muted)">No pending requests</div>'; return; }
+  el.innerHTML = loans.map(l=>`
+    <div class="item-row">
+      <div class="item-row-head">
+        <div>
+          <div class="item-row-name">${esc(l.accountName||l.ownerUsername||'?')}: ${fmt(l.principal)} @ ${l.interestRate}% APR</div>
+          <div class="item-row-sub">Due: ${fmtDate(l.dueDate)}</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-green btn-sm" onclick="adminApproveLoan('${l.id}','${l.accountId}',${l.principal})">Approve</button>
+          <button class="btn btn-red btn-sm" onclick="adminDenyLoan('${l.id}')">Deny</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════════════════════
+//  BANK ACTIONS
+// ════════════════════════════════════════════════════════
+async function doTransfer() {
+  const toId  = $('transfer-to').value;
+  const amt   = parseFloat($('transfer-amount').value);
+  const note  = $('transfer-note').value.trim()||'Transfer';
+  const msg   = $('transfer-msg');
+  msg.style.display='none';
+  if(!toId){msg.textContent='Select a recipient.';msg.style.display='block';return;}
+  if(!amt||amt<=0){msg.textContent='Enter a valid amount.';msg.style.display='block';return;}
+
+  // Check balance
+  const fromSnap = await db.collection('accounts').doc(G.viewAccountId).get();
+  const fromAcc  = fromSnap.data();
+  if(fromAcc.balance < amt){msg.textContent=`Insufficient balance (${fmt(fromAcc.balance)}).`;msg.style.display='block';return;}
+
+  const toSnap = await db.collection('accounts').doc(toId).get();
+  const toAcc  = toSnap.data();
+
+  const batch = db.batch();
+  // Debit sender
+  batch.update(db.collection('accounts').doc(G.viewAccountId),{balance:firebase.firestore.FieldValue.increment(-amt)});
+  batch.set(db.collection('transactions').doc(),{accountId:G.viewAccountId,type:'transfer_out',amount:amt,description:`Transfer to ${toAcc.name}: ${note}`,relatedAccountId:toId,createdAt:now8601(),createdBy:G.user.uid});
+  // Credit recipient
+  batch.update(db.collection('accounts').doc(toId),{balance:firebase.firestore.FieldValue.increment(amt)});
+  batch.set(db.collection('transactions').doc(),{accountId:toId,type:'transfer_in',amount:amt,description:`Transfer from ${fromAcc.name}: ${note}`,relatedAccountId:G.viewAccountId,createdAt:now8601(),createdBy:G.user.uid});
+  await batch.commit();
+
+  $('transfer-amount').value='';
+  $('transfer-note').value='';
+  toast(`Sent ${fmt(amt)} to ${toAcc.name}`);
+}
+
+async function doRequestLoan() {
+  const principal = parseFloat($('loan-amount').value);
+  const rate      = parseFloat($('loan-rate').value);
+  const dueDate   = $('loan-due').value;
+  if(!principal||principal<=0) return toast('Enter a valid amount.',false);
+  if(isNaN(rate)||rate<0)      return toast('Enter a valid interest rate.',false);
+  if(!dueDate)                 return toast('Select a due date.',false);
+
+  const accSnap = await db.collection('accounts').doc(G.viewAccountId).get();
+  await db.collection('loans').add({
+    accountId:    G.viewAccountId,
+    accountName:  accSnap.data().name,
+    ownerUsername: G.username,
+    ownerUid:     G.user.uid,
+    principal,
+    balance:      principal,
+    interestRate: rate,
+    dueDate,
+    status:       'pending',
+    createdAt:    now8601(),
+  });
+  $('loan-amount').value='';
+  $('loan-rate').value='';
+  $('loan-due').value='';
+  toast('Loan request submitted — awaiting admin approval.');
+}
+
+async function doRepayLoan(loanId) {
+  const inp = $('repay-'+loanId);
+  const amt = parseFloat(inp?.value);
+  if(!amt||amt<=0) return toast('Enter a repayment amount.',false);
+
+  const [loanSnap, accSnap] = await Promise.all([
+    db.collection('loans').doc(loanId).get(),
+    db.collection('accounts').doc(G.viewAccountId).get(),
+  ]);
+  const loan = loanSnap.data();
+  const acc  = accSnap.data();
+  if(acc.balance < amt) return toast(`Insufficient balance (${fmt(acc.balance)}).`, false);
+  const repay = Math.min(amt, loan.balance);
+  const newBalance = loan.balance - repay;
+  const batch = db.batch();
+  batch.update(db.collection('loans').doc(loanId),{balance:newBalance, status:newBalance<=0?'paid':'active'});
+  batch.update(db.collection('accounts').doc(G.viewAccountId),{balance:firebase.firestore.FieldValue.increment(-repay)});
+  batch.set(db.collection('transactions').doc(),{accountId:G.viewAccountId,type:'loan_repayment',amount:repay,description:'Loan repayment',createdAt:now8601(),createdBy:G.user.uid});
+  await batch.commit();
+  toast(`Repaid ${fmt(repay)} on loan`);
+}
+
+async function doPayBill(billId, amount) {
+  const accSnap = await db.collection('accounts').doc(G.viewAccountId).get();
+  const acc = accSnap.data();
+  const billSnap = await db.collection('bills').doc(billId).get();
+  const bill = billSnap.data();
+  if(acc.balance < amount) return toast(`Insufficient balance (${fmt(acc.balance)}).`, false);
+  const batch = db.batch();
+  batch.update(db.collection('bills').doc(billId),{paid:true,paidAt:now8601()});
+  batch.update(db.collection('accounts').doc(G.viewAccountId),{balance:firebase.firestore.FieldValue.increment(-amount)});
+  batch.set(db.collection('transactions').doc(),{accountId:G.viewAccountId,type:'bill_payment',amount,description:`Bill payment: ${bill.name}`,createdAt:now8601(),createdBy:G.user.uid});
+  await batch.commit();
+  toast(`Paid ${fmt(amount)} for ${bill.name}`);
+}
+
+// ════════════════════════════════════════════════════════
+//  ADMIN BANK ACTIONS
+// ════════════════════════════════════════════════════════
+async function adminDeposit() {
+  const amt  = parseFloat($('deposit-amount').value);
+  const desc = $('deposit-desc').value.trim()||'Deposit';
+  if(!amt||amt<=0) return toast('Enter a valid amount.',false);
+  const batch = db.batch();
+  batch.update(db.collection('accounts').doc(G.viewAccountId),{balance:firebase.firestore.FieldValue.increment(amt)});
+  batch.set(db.collection('transactions').doc(),{accountId:G.viewAccountId,type:'deposit',amount:amt,description:desc,createdAt:now8601(),createdBy:G.user.uid});
+  await batch.commit();
+  $('deposit-amount').value='';
+  $('deposit-desc').value='';
+  toast(`Added ${fmt(amt)} to account`);
+}
+
+async function adminAddBill() {
+  const name  = $('bill-name').value.trim();
+  const amt   = parseFloat($('bill-amount').value);
+  const due   = $('bill-due').value;
+  if(!name) return toast('Enter a bill name.',false);
+  if(!amt||amt<=0) return toast('Enter a valid amount.',false);
+  await db.collection('bills').add({accountId:G.viewAccountId,name,amount:amt,dueDate:due,paid:false,createdAt:now8601(),createdBy:G.user.uid});
+  $('bill-name').value='';
+  $('bill-amount').value='';
+  $('bill-due').value='';
+  toast(`Bill "${name}" added`);
+}
+
+async function adminApproveLoan(loanId, accountId, principal) {
+  const loanSnap = await db.collection('loans').doc(loanId).get();
+  const loan = loanSnap.data();
+  const batch = db.batch();
+  batch.update(db.collection('loans').doc(loanId),{status:'active',approvedAt:now8601(),approvedBy:G.user.uid});
+  batch.update(db.collection('accounts').doc(accountId),{balance:firebase.firestore.FieldValue.increment(principal)});
+  batch.set(db.collection('transactions').doc(),{accountId,type:'loan_disbursement',amount:principal,description:`Loan approved: ${fmt(principal)} @ ${loan.interestRate}% APR`,createdAt:now8601(),createdBy:G.user.uid});
+  await batch.commit();
+  toast(`Loan approved — ${fmt(principal)} disbursed`);
+}
+
+async function adminDenyLoan(loanId) {
+  await db.collection('loans').doc(loanId).update({status:'denied',deniedAt:now8601(),deniedBy:G.user.uid});
+  toast('Loan request denied');
+}
+
+// ════════════════════════════════════════════════════════
+//  EXCHANGE RENDERING
+// ════════════════════════════════════════════════════════
+function renderStockList() {
+  const el = $('stocks-list');
+  const filter = ($('stock-filter').value||'').toUpperCase();
+  const stocks = Object.values(G.stocks).filter(s=>!filter||s.id.includes(filter)||(s.name||'').toUpperCase().includes(filter));
+  if(!stocks.length){el.innerHTML='<div class="empty"><div class="empty-icon">📉</div>No stocks</div>';return;}
+  el.innerHTML = stocks.sort((a,b)=>a.id.localeCompare(b.id)).map(s => {
+    const chg = s.previousPrice ? ((s.price-s.previousPrice)/s.previousPrice*100) : 0;
+    const cls = chg>0.01?'chg-pos':chg<-0.01?'chg-neg':'';
+    const arrow = chg>0.01?'▲':chg<-0.01?'▼':'';
+    return `<div class="stock-row ${G.selectedTicker===s.id?'selected':''}" onclick="selectTicker('${s.id}')">
+      <span class="stock-ticker">${esc(s.id)}</span>
+      <span class="stock-name">${esc(s.name||s.id)}</span>
+      <span class="stock-price">${fmt(s.price)}</span>
+      <span class="stock-chg ${cls}">${arrow}${chg?Math.abs(chg).toFixed(2)+'%':''}</span>
+    </div>`;
+  }).join('');
+}
+
+$('stock-filter').addEventListener('input', renderStockList);
+
+function selectTicker(ticker) {
+  G.selectedTicker = ticker;
+  renderStockList();
+  renderTradePanel(ticker);
+  const s = G.stocks[ticker];
+  if(s){
+    $('trade-ticker-label').textContent = `${s.id} — ${s.name||s.id}`;
+    $('trade-price-label').textContent = fmt(s.price);
+  }
+}
+
+function renderTradePanel(ticker) {
+  const s = G.stocks[ticker];
+  if(!s) return;
+  const pos = G.positions[ticker];
+  const owned = pos ? pos.shares : 0;
+  const open = isMarketOpen();
+  const marketNote = !open && G.role!=='admin' ? '<div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);border-radius:8px;padding:10px 12px;font-size:12px;color:#fca5a5;margin-bottom:14px;">🔴 Market is closed. Trading hours: Mon–Fri 10 AM – 4 PM CST.</div>' : '';
+  const disabled = (!open && G.role!=='admin') ? 'disabled' : '';
+
+  $('trade-panel').innerHTML = `
+    ${marketNote}
+    <div style="display:flex;justify-content:space-between;margin-bottom:16px;font-size:13px;color:var(--muted)">
+      <span>You own: <b style="color:var(--text)">${owned} shares</b></span>
+      <span>Value: <b style="color:var(--accent2)">${fmt(owned*s.price)}</b></span>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Shares to Buy</label>
+        <input id="buy-shares" type="number" min="1" step="1" placeholder="0">
+      </div>
+      <button class="btn btn-green" style="margin-top:20px" onclick="doBuy('${ticker}')" ${disabled}>Buy</button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px" id="buy-cost-preview"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Shares to Sell</label>
+        <input id="sell-shares" type="number" min="1" step="1" max="${owned}" placeholder="0">
+      </div>
+      <button class="btn btn-red" style="margin-top:20px" onclick="doSell('${ticker}')" ${disabled}>Sell</button>
+    </div>
+    <div style="font-size:11px;color:var(--muted)" id="sell-proceeds-preview"></div>
+  `;
+
+  $('buy-shares').addEventListener('input', () => {
+    const n = parseInt($('buy-shares').value)||0;
+    $('buy-cost-preview').textContent = n>0 ? `Cost: ${fmt(n*s.price)}` : '';
+  });
+  $('sell-shares').addEventListener('input', () => {
+    const n = parseInt($('sell-shares').value)||0;
+    $('sell-proceeds-preview').textContent = n>0 ? `Proceeds: ${fmt(n*s.price)}` : '';
+  });
+}
+
+function renderPortfolio() {
+  const el = $('portfolio-list');
+  const pos = Object.values(G.positions).filter(p=>p.shares>0);
+  let totalVal = 0;
+  if(!pos.length){el.innerHTML='<div class="empty"><div class="empty-icon">📊</div>No positions yet</div>';$('portfolio-value').textContent='';return;}
+  el.innerHTML = '<div>' + pos.map(p => {
+    const s = G.stocks[p.ticker];
+    const price = s?s.price:0;
+    const val = p.shares * price;
+    const gain = val - (p.avgPrice||0)*p.shares;
+    totalVal += val;
+    const gainCls = gain>=0?'chg-pos':'chg-neg';
+    return `<div class="stock-row">
+      <span class="stock-ticker">${esc(p.ticker)}</span>
+      <span class="stock-name">${p.shares} shares @ avg ${fmt(p.avgPrice)}</span>
+      <span class="stock-price">${fmt(val)}</span>
+      <span class="stock-chg ${gainCls}">${gain>=0?'+':''}${fmt(gain)}</span>
+    </div>`;
+  }).join('') + '</div>';
+  $('portfolio-value').textContent = `Total: ${fmt(totalVal)}`;
+}
+
+// ════════════════════════════════════════════════════════
+//  STOCK TRADING ACTIONS
+// ════════════════════════════════════════════════════════
+async function doBuy(ticker) {
+  const shares = parseInt($('buy-shares').value);
+  if(!shares||shares<1) return toast('Enter a valid number of shares.',false);
+  if(!isMarketOpen()&&G.role!=='admin') return toast('Market is closed.',false);
+
+  const s = G.stocks[ticker];
+  const cost = shares * s.price;
+
+  const accSnap = await db.collection('accounts').doc(G.viewAccountId).get();
+  if(accSnap.data().balance < cost) return toast(`Insufficient balance. Need ${fmt(cost)}.`,false);
+
+  // Get issuer account to credit
+  const issuerAccountId = s.issuerAccountId;
+
+  const batch = db.batch();
+  // Debit buyer
+  batch.update(db.collection('accounts').doc(G.viewAccountId),{balance:firebase.firestore.FieldValue.increment(-cost)});
+  batch.set(db.collection('transactions').doc(),{accountId:G.viewAccountId,type:'stock_purchase',amount:cost,description:`Bought ${shares} ${ticker} @ ${fmt(s.price)}`,createdAt:now8601(),createdBy:G.user.uid});
+  // Credit issuer if exists
+  if(issuerAccountId){
+    batch.update(db.collection('accounts').doc(issuerAccountId),{balance:firebase.firestore.FieldValue.increment(cost)});
+    batch.set(db.collection('transactions').doc(),{accountId:issuerAccountId,type:'stock_sale',amount:cost,description:`Stock sale: ${shares} ${ticker} to ${G.username}`,createdAt:now8601(),createdBy:G.user.uid});
+  }
+  // Update position
+  const posId = G.username+'_'+ticker;
+  const existing = G.positions[ticker];
+  if(existing){
+    const newShares = existing.shares + shares;
+    const newAvg = ((existing.avgPrice||0)*existing.shares + cost) / newShares;
+    batch.update(db.collection('positions').doc(posId),{shares:newShares,avgPrice:newAvg,updatedAt:now8601()});
+  } else {
+    batch.set(db.collection('positions').doc(posId),{ownerUsername:G.username,ownerUid:G.user.uid,accountId:G.viewAccountId,ticker,shares,avgPrice:s.price,createdAt:now8601()});
+  }
+  // Trade record
+  batch.set(db.collection('trades').doc(),{ticker,type:'buy',shares,price:s.price,total:cost,buyerUsername:G.username,createdAt:now8601()});
+  await batch.commit();
+  $('buy-shares').value='';
+  $('buy-cost-preview').textContent='';
+  toast(`Bought ${shares} shares of ${ticker} for ${fmt(cost)}`);
+}
+
+async function doSell(ticker) {
+  const shares = parseInt($('sell-shares').value);
+  if(!shares||shares<1) return toast('Enter a valid number of shares.',false);
+  if(!isMarketOpen()&&G.role!=='admin') return toast('Market is closed.',false);
+
+  const pos = G.positions[ticker];
+  if(!pos||pos.shares<shares) return toast(`You only own ${pos?pos.shares:0} shares.`,false);
+
+  const s = G.stocks[ticker];
+  const proceeds = shares * s.price;
+  const issuerAccountId = s.issuerAccountId;
+
+  const batch = db.batch();
+  // Credit seller
+  batch.update(db.collection('accounts').doc(G.viewAccountId),{balance:firebase.firestore.FieldValue.increment(proceeds)});
+  batch.set(db.collection('transactions').doc(),{accountId:G.viewAccountId,type:'stock_sale',amount:proceeds,description:`Sold ${shares} ${ticker} @ ${fmt(s.price)}`,createdAt:now8601(),createdBy:G.user.uid});
+  // Debit issuer
+  if(issuerAccountId){
+    batch.update(db.collection('accounts').doc(issuerAccountId),{balance:firebase.firestore.FieldValue.increment(-proceeds)});
+    batch.set(db.collection('transactions').doc(),{accountId:issuerAccountId,type:'stock_purchase',amount:proceeds,description:`Stock buyback: ${shares} ${ticker} from ${G.username}`,createdAt:now8601(),createdBy:G.user.uid});
+  }
+  // Update position
+  const posId = G.username+'_'+ticker;
+  const newShares = pos.shares - shares;
+  if(newShares<=0) batch.delete(db.collection('positions').doc(posId));
+  else batch.update(db.collection('positions').doc(posId),{shares:newShares,updatedAt:now8601()});
+  // Trade record
+  batch.set(db.collection('trades').doc(),{ticker,type:'sell',shares,price:s.price,total:proceeds,sellerUsername:G.username,createdAt:now8601()});
+  await batch.commit();
+  $('sell-shares').value='';
+  $('sell-proceeds-preview').textContent='';
+  toast(`Sold ${shares} shares of ${ticker} for ${fmt(proceeds)}`);
+}
+
+// ════════════════════════════════════════════════════════
+//  ADMIN STOCK ACTIONS
+// ════════════════════════════════════════════════════════
+function renderAdminStockIssuerSelect() {
+  const sel = $('s-issuer');
+  sel.innerHTML = '<option value="">None</option>' +
+    G.allAccounts.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join('');
+}
+
+async function adminSaveStock() {
+  const ticker = ($('s-ticker').value||'').trim().toUpperCase();
+  const name   = ($('s-name').value||'').trim();
+  const price  = parseFloat($('s-price').value);
+  const issuer = $('s-issuer').value;
+  if(!ticker) return toast('Enter a ticker.',false);
+  if(!price||price<=0) return toast('Enter a valid price.',false);
+
+  const existing = G.stocks[ticker];
+  const data = {
+    name:           name||ticker,
+    price,
+    previousPrice:  existing ? existing.price : price,
+    issuerAccountId:issuer||null,
+    updatedAt:      now8601(),
+    updatedBy:      G.user.uid,
+  };
+  if(!existing) data.createdAt = now8601();
+
+  await db.collection('stocks').doc(ticker).set(data, {merge:true});
+  $('s-ticker').value='';
+  $('s-name').value='';
+  $('s-price').value='';
+  toast(`Stock ${ticker} saved`);
+}
+
+async function adminUpdateStockPrice(ticker, newPrice) {
+  const s = G.stocks[ticker];
+  if(!s) return;
+  await db.collection('stocks').doc(ticker).update({previousPrice:s.price, price:newPrice, updatedAt:now8601()});
+  toast(`${ticker} price updated to ${fmt(newPrice)}`);
+}
+
+async function adminDeleteStock(ticker) {
+  if(!confirm(`Delete ${ticker}? This cannot be undone.`)) return;
+  await db.collection('stocks').doc(ticker).delete();
+  toast(`${ticker} removed from market`);
+}
+
+function renderAdminStocks() {
+  const el = $('admin-stocks-list');
+  const stocks = Object.values(G.stocks);
+  if(!stocks.length){el.innerHTML='<div style="font-size:12px;color:var(--muted)">No stocks yet</div>';return;}
+  el.innerHTML = stocks.map(s=>`
+    <div class="item-row">
+      <div class="item-row-head">
+        <div>
+          <div class="item-row-name">${esc(s.id)} — ${esc(s.name||s.id)}</div>
+          <div class="item-row-sub">Current price: ${fmt(s.price)}</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="number" id="price-${s.id}" value="${s.price}" step="0.01" min="0.01" style="width:90px;padding:5px 8px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;outline:none">
+          <button class="btn btn-ghost btn-sm" onclick="adminUpdateStockPrice('${s.id}',parseFloat(document.getElementById('price-${s.id}').value))">Set</button>
+          <button class="btn btn-red btn-sm" onclick="adminDeleteStock('${s.id}')">✕</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════════════════════
+//  KEYBOARD SHORTCUTS
+// ════════════════════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if(e.key==='Escape') closeModal();
+});
+</script>
+</body>
+</html>
