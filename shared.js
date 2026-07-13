@@ -1,0 +1,396 @@
+/* ═══════════════════════════════════════════════════════════
+   UNION OF THE UNITED REPUBLICS (U.U.R.) FINANCIAL NETWORK — shared core
+   Used by every brand site. Keeps the original Firestore
+   schema (accounts / transactions / loans / bills / stocks /
+   positions / trades / casino* / market / presence / adminLogs)
+   and adds: VNB + Valorian Frank FX, manager role, staff.
+   ═══════════════════════════════════════════════════════════ */
+
+const FB_CONFIG = {
+  apiKey:            "AIzaSyChstZGtH4hIExL_gPcUji7aoG5j0NKhmc",
+  authDomain:        "uurweb.firebaseapp.com",
+  projectId:         "uurweb",
+  storageBucket:     "uurweb.firebasestorage.app",
+  messagingSenderId: "239623573104",
+  appId:             "1:239623573104:web:191687b4475eb5f59c6eb5"
+};
+const ADMINS      = ['minekid123','adamenek','purpleaki123'];
+const FAKE_DOMAIN = '@uurweb.rp';
+
+firebase.initializeApp(FB_CONFIG);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+const FV   = firebase.firestore.FieldValue;
+
+/* ── Global session state ── */
+const G = {
+  user:null, username:'', role:'user', managerBank:'',
+  profile:null,
+  accountId:null, meraldAccountId:null, vnbAccountId:null,
+  accounts:{},            // id → account doc (owned)
+  fx:{ vfPerEmerul:2.40, spreadPct:0.5 },
+  unsubs:[], presenceTimer:null,
+  casinoSettings:null, marketSettings:null
+};
+
+/* ── Tiny helpers ── */
+const $  = id => document.getElementById(id);
+const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clamp = (v,a,b)=>Math.min(b,Math.max(a,Number(v)||0));
+const now8601 = ()=>new Date().toISOString();
+function dateFromAny(v){ if(!v) return new Date(0); if(v.toDate) return v.toDate(); const d=new Date(v); return isNaN(d)?new Date(0):d; }
+function fmtDateTime(v){ const d=dateFromAny(v); return d.getTime()?d.toLocaleString(undefined,{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}):'—'; }
+function fmtDate(v){ const d=dateFromAny(v); return d.getTime()?d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}):'—'; }
+function cryptoRandom(){ const a=new Uint32Array(1); crypto.getRandomValues(a); return a[0]/4294967296; }
+function normalish(){ let s=0; for(let i=0;i<6;i++) s+=cryptoRandom(); return (s-3)/3; }
+function refCode(prefix){ return prefix+'-'+Math.random().toString(36).slice(2,8).toUpperCase(); }
+
+/* ── Money formatting (U.U.R. Emerul + Valorian Frank) ── */
+const EMERUL_CODE = 'EM';
+const EMERUL_NAME = 'U.U.R. Emerul';
+function fmt(n){ return 'EM '+Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtVF(n){ return '₣'+Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtCur(n,cur){ return cur==='VF' ? fmtVF(n) : fmt(n); }
+function accountCurrency(a){
+  const raw=String(a?.currency||'').toUpperCase();
+  return (raw==='VF' || a?.bank==='VNB') ? 'VF' : EMERUL_CODE; // all legacy non-VF accounts are treated as Emerul
+}
+function fxRate(fx=G.fx){ return Number(fx?.vfPerEmerul ?? fx?.vfPerUsd ?? 2.40) || 2.40; }
+function emerulEquivalent(a){ const b=Number(a?.balance||0); return accountCurrency(a)==='VF' ? b/fxRate() : b; }
+
+function bankName(a){ return String(a?.bank||'IUB').toUpperCase(); }
+function accountStatus(a){ return String(a?.status||'active').toLowerCase(); }
+
+/* ── Brands registry ── */
+const BRANDS = {
+  IUB:    { name:'International Union Banking', short:'IUB',    logo:'assets/iub.png',    page:'iub.html',    tag:'The Central Bank of the Union',   color:'#1a6b45' },
+  MERALD: { name:'Merald Banking',              short:'MERALD', logo:'assets/merald.png', page:'merald.html', tag:'Banking that moves at your speed',  color:'#0c8a54' },
+  VNB:    { name:'Valorianische Nationalbank',  short:'VNB',    logo:'assets/vnb.png',    page:'vnb.html',    tag:'Die Nationalbank Valorias · Banking Act of 1926', color:'#7a1420' },
+  CSE:    { name:'Central Stock Exchange',      short:'CSE',    logo:'assets/cse.png',    page:'cse.html',    tag:'Where the Union trades',            color:'#1246a0' },
+  OC:     { name:'OC Online Casino',            short:'OC',     logo:'assets/oc-casino.png', page:'casino.html', tag:'The Union\u2019s premier gaming floor', color:'#c9a24b' }
+};
+
+/* ── NPC staff directory ── */
+const STAFF = {
+  IUB: [
+    {n:'Margaret Holloway', t:'Senior Relationship Manager', b:'22 years in Union banking. Specialist in commercial lending and estate accounts.'},
+    {n:'Daniel Okafor',     t:'Branch Director, Central City', b:'Oversees retail operations and the IUB certificate desk.'},
+    {n:'Priya Ramanathan',  t:'Credit & Loans Officer', b:'Handles loan underwriting and repayment planning.'},
+    {n:'Thomas Beck',       t:'Treasury Analyst', b:'Manages interbank settlement and reserve reporting.'}
+  ],
+  MERALD: [
+    {n:'Jules Fontaine',    t:'Member Success Lead', b:'Your first stop for vaults, cards and Transfer Guard.'},
+    {n:'Aria Chen',         t:'Product Specialist', b:'Runs the MERALD savings goals and insights program.'},
+    {n:'Marco Silva',       t:'Fraud & Security', b:'Watches transfer patterns so you don\u2019t have to.'}
+  ],
+  VNB: [
+    {n:'Dr. Elisabeth von Adler', t:'Direktorin · Geldpolitik', b:'Chairs the Frank Rate Committee and sets policy guidance.'},
+    {n:'Konrad Weiss',      t:'Leiter Devisenhandel', b:'Runs the VNB foreign exchange desk and daily fixing.'},
+    {n:'Sofia Lindqvist',   t:'Kundenbetreuerin International', b:'Assists foreign depositors with Frank accounts.'}
+  ],
+  CSE: [
+    {n:'Raymond Cole',      t:'Head of Market Operations', b:'Keeps the tape running and the book balanced.'},
+    {n:'Ingrid Vasquez',    t:'Listings & Compliance', b:'Reviews issuers and enforces trading rules.'},
+    {n:'Felix Grant',       t:'Client Brokerage Desk', b:'Execution support for retail traders.'}
+  ],
+  OC: [
+    {n:'Vince "Lucky" Delaney', t:'Casino Host', b:'VIP comps, table minimums, and a story for every chip.'},
+    {n:'Nadia Sorel',       t:'Games Integrity Manager', b:'Certifies every wheel, deck and reel on the floor.'},
+    {n:'Omar Haddad',       t:'Cage Manager', b:'Handles buy-ins and payouts to your bank of choice.'}
+  ]
+};
+function yourManager(brand){
+  const list = STAFF[brand]||[]; if(!list.length) return null;
+  let h=0; const u=(G.user?.uid||'x'); for(let i=0;i<u.length;i++) h=(h*31+u.charCodeAt(i))>>>0;
+  return list[h%list.length];
+}
+function staffCards(brand){
+  return (STAFF[brand]||[]).map(s=>{
+    const initials = s.n.split(' ').map(w=>w[0]).filter(c=>/[A-Z]/.test(c)).slice(0,2).join('');
+    return `<div class="staff-card"><div class="staff-avatar">${initials}</div><div><div class="staff-name">${esc(s.n)}</div><div class="staff-title">${esc(s.t)}</div><div class="staff-bio">${esc(s.b)}</div></div></div>`;
+  }).join('');
+}
+
+/* ── Toast + modal (auto-injected) ── */
+function ensureChrome(){
+  if(!$('uur-toasts')){ const t=document.createElement('div'); t.id='uur-toasts'; document.body.appendChild(t); }
+  if(!$('uur-modal')){
+    const m=document.createElement('div'); m.id='uur-modal'; m.innerHTML='<div class="uur-modal-card"><div class="uur-modal-head"><div id="uur-modal-title"></div><button onclick="closeModal()" class="uur-modal-x">✕</button></div><div id="uur-modal-sub"></div><div id="uur-modal-body"></div><div id="uur-modal-foot"></div></div>';
+    m.addEventListener('click',e=>{ if(e.target===m) closeModal(); });
+    document.body.appendChild(m);
+  }
+}
+function toast(msg, ok=true){
+  ensureChrome();
+  const el=document.createElement('div'); el.className='uur-toast '+(ok?'ok':'bad'); el.textContent=msg;
+  $('uur-toasts').appendChild(el);
+  requestAnimationFrame(()=>el.classList.add('show'));
+  setTimeout(()=>{ el.classList.remove('show'); setTimeout(()=>el.remove(),300); }, 4200);
+}
+function showModal(title, sub, bodyHTML, footHTML){
+  ensureChrome();
+  $('uur-modal-title').textContent=title; $('uur-modal-sub').textContent=sub||'';
+  $('uur-modal-body').innerHTML=bodyHTML||''; $('uur-modal-foot').innerHTML=footHTML||'';
+  $('uur-modal').classList.add('open');
+}
+function closeModal(){ const m=$('uur-modal'); if(m) m.classList.remove('open'); }
+
+/* ── Roles ── */
+function isAdmin(){ return G.role==='admin'; }
+function isManager(){ return G.role==='manager'; }
+function isStaffUser(){ return isAdmin()||isManager(); }
+function canManageBank(bank){
+  if(isAdmin()) return true;
+  if(!isManager()) return false;
+  const mb = String(G.managerBank||'').toUpperCase();
+  return mb==='ALL' || mb===String(bank).toUpperCase();
+}
+function requireAdmin(what){ if(!isAdmin()){ toast('Only admins can '+(what||'do that')+'.',false); return false;} return true; }
+function requireBankStaff(bank, what){ if(!canManageBank(bank)){ toast('Only '+bank+' staff can '+(what||'do that')+'.',false); return false;} return true; }
+
+async function audit(action, detail){
+  try{ await db.collection('adminLogs').add({action, detail:detail||{}, actor:G.username, actorUid:G.user?.uid||null, actorRole:G.role, createdAt:now8601()}); }catch(e){ console.warn('audit failed',e); }
+}
+
+/* ── Presence ── */
+async function setPresence(online){
+  if(!G.user) return;
+  try{ await db.collection('presence').doc(G.user.uid).set({username:G.username, online:!!online, page:document.body.dataset.brand||'portal', lastSeen:now8601()},{merge:true}); }catch{}
+}
+function startPresence(){
+  setPresence(true);
+  G.presenceTimer=setInterval(()=>setPresence(true), 60000);
+  window.addEventListener('beforeunload',()=>{ try{ setPresence(false); }catch{} });
+}
+
+/* ── FX (Valorian Frank) ── */
+const DEFAULT_FX = { vfPerEmerul:2.40, spreadPct:0.5 };
+function normalizeFx(data={}){
+  return {...DEFAULT_FX, ...data, vfPerEmerul:Number(data.vfPerEmerul ?? data.vfPerUsd ?? DEFAULT_FX.vfPerEmerul)};
+}
+function subscribeFx(onChange){
+  G.unsubs.push(db.collection('fx').doc('settings').onSnapshot(doc=>{
+    G.fx = doc.exists ? normalizeFx(doc.data()) : {...DEFAULT_FX};
+    if(onChange) onChange(G.fx);
+  }, err=>console.warn('fx listener', err)));
+}
+async function ensureFxSettings(){
+  if(!isAdmin()) return;
+  const ref=db.collection('fx').doc('settings'); const s=await ref.get();
+  if(!s.exists) await ref.set({...DEFAULT_FX, createdAt:now8601(), updatedBy:G.user.uid});
+  else if(!s.data().vfPerEmerul) await ref.set({vfPerEmerul:fxRate(s.data())},{merge:true});
+}
+/* rate incl. spread: buying VF (Emerul→VF) gets slightly fewer francs; selling VF gets slightly fewer Emerul */
+function fxQuote(direction, amount){
+  const r=fxRate(), sp=Number(G.fx.spreadPct||0)/100;
+  if(direction==='em2vf'){ const rate=r*(1-sp); return {rate, out:Math.round(amount*rate*100)/100}; }
+  const rate=r*(1+sp); return {rate, out:Math.round(amount/rate*100)/100};
+}
+
+
+/* ── Account bootstrap (keeps legacy IDs, adds VNB lazily) ── */
+async function loadOwnedAccounts(){
+  const snap = await db.collection('accounts').where('ownerUid','==',G.user.uid).get();
+  G.accounts={};
+  snap.docs.forEach(d=>{ G.accounts[d.id]={...d.data(), id:d.id}; });
+  const p=G.profile||{};
+  const byBank = b => Object.values(G.accounts).find(a=>bankName(a)===b);
+  G.accountId       = (p.iubAccountId && G.accounts[p.iubAccountId]) ? p.iubAccountId : (byBank('IUB')?.id || p.accountId || null);
+  G.meraldAccountId = (p.meraldAccountId && G.accounts[p.meraldAccountId]) ? p.meraldAccountId : (byBank('MERALD')?.id || null);
+  G.vnbAccountId    = (p.vnbAccountId && G.accounts[p.vnbAccountId]) ? p.vnbAccountId : (byBank('VNB')?.id || null);
+}
+async function ensureVnbAccount(){
+  if(G.vnbAccountId) return G.vnbAccountId;
+  const ref = db.collection('accounts').doc();
+  await ref.set({name:`${G.username} VNB`, bank:'VNB', currency:'VF', ownerUid:G.user.uid, ownerUsername:G.username, balance:0, status:'active', accountType:'checking', interestApr:0, createdAt:now8601()});
+  await db.collection('users').doc(G.user.uid).set({vnbAccountId:ref.id},{merge:true});
+  G.vnbAccountId=ref.id;
+  toast('Your Valorian Frank account has been opened.');
+  return ref.id;
+}
+
+/* ── Universal transfer engine (handles cross-currency via FX) ── */
+async function transferBetween(fromId, toId, amount, note){
+  const amt=Math.round(Number(amount)*100)/100;
+  if(!fromId||!toId||fromId===toId) throw new Error('Choose two different accounts.');
+  if(!amt||amt<=0) throw new Error('Enter a valid amount.');
+  const fromRef=db.collection('accounts').doc(fromId), toRef=db.collection('accounts').doc(toId);
+  const transferId=db.collection('bankTransfers').doc().id;
+  const createdAt=now8601();
+  let summary=null;
+  await db.runTransaction(async tx=>{
+    const [fs,ts]=await Promise.all([tx.get(fromRef),tx.get(toRef)]);
+    if(!fs.exists||!ts.exists) throw new Error('Account not found.');
+    const from={...fs.data(),id:fs.id}, to={...ts.data(),id:ts.id};
+    if(from.ownerUid!==G.user.uid && !isStaffUser()) throw new Error('You can only send from your own accounts.');
+    if(accountStatus(from)!=='active' && !isStaffUser()) throw new Error('The source account is restricted.');
+    if(accountStatus(to)==='closed') throw new Error('The destination account is closed.');
+    if(Number(from.balance||0)<amt) throw new Error('Insufficient balance.');
+    const fc=accountCurrency(from), tc=accountCurrency(to);
+    let credit=amt, fxNote='';
+    if(fc!==tc){
+      const q = fc===EMERUL_CODE ? fxQuote('em2vf',amt) : fxQuote('vf2em',amt);
+      credit=q.out; fxNote=` · FX @ ${q.rate.toFixed(4)} ${fc===EMERUL_CODE?'₣/EM':'EM/₣'}`;
+    }
+    tx.update(fromRef,{balance:FV.increment(-amt), updatedAt:createdAt});
+    tx.update(toRef,{balance:FV.increment(credit), updatedAt:createdAt});
+    tx.set(db.collection('bankTransfers').doc(transferId),{fromAccountId:fromId,toAccountId:toId,fromBank:bankName(from),toBank:bankName(to),amount:amt,credited:credit,fromCurrency:fc,toCurrency:tc,note:String(note||'Transfer').slice(0,140),ownerUid:G.user.uid,ownerUsername:G.username,createdAt});
+    tx.set(db.collection('transactions').doc(),{accountId:fromId,ownerUid:from.ownerUid,ownerUsername:from.ownerUsername,bank:bankName(from),type:'transfer_out',amount:amt,description:`${bankName(from)} transfer to ${to.name}: ${note||'Transfer'}${fxNote}`,relatedAccountId:toId,transferId,createdAt,createdBy:G.user.uid});
+    tx.set(db.collection('transactions').doc(),{accountId:toId,ownerUid:to.ownerUid,ownerUsername:to.ownerUsername,bank:bankName(to),type:'transfer_in',amount:credit,description:`Transfer from ${from.name} (${bankName(from)}): ${note||'Transfer'}${fxNote}`,relatedAccountId:fromId,transferId,createdAt,createdBy:G.user.uid});
+    summary={from,to,amt,credit,fc,tc};
+  });
+  return summary;
+}
+
+/* ── Manager desk ops (shared by all bank pages) ── */
+async function staffAdjustBalance(bank, accountId, amount, memo){
+  if(!requireBankStaff(bank,'adjust balances')) return;
+  const amt=Math.round(Number(amount)*100)/100;
+  if(!amt) return toast('Enter a non-zero amount.',false);
+  const ref=db.collection('accounts').doc(accountId);
+  await db.runTransaction(async tx=>{
+    const s=await tx.get(ref); if(!s.exists) throw new Error('Account not found.');
+    const a=s.data();
+    if(bankName(a)!==bank) throw new Error('That account belongs to another institution.');
+    if(amt<0 && Number(a.balance||0)<Math.abs(amt)) throw new Error('Adjustment would overdraw the account.');
+    tx.update(ref,{balance:FV.increment(amt), updatedAt:now8601()});
+    tx.set(db.collection('transactions').doc(),{accountId,ownerUid:a.ownerUid,ownerUsername:a.ownerUsername,bank,type:amt>=0?'deposit':'fee',amount:Math.abs(amt),description:`${amt>=0?'Credit':'Debit'} by ${G.role} ${G.username}: ${memo||'Account adjustment'}`,createdAt:now8601(),createdBy:G.user.uid});
+  });
+  await audit('staff.adjust',{bank,accountId,amount:amt,memo});
+  toast('Adjustment posted.');
+}
+async function staffSetStatus(bank, accountId, status){
+  if(!requireBankStaff(bank,'change account status')) return;
+  await db.collection('accounts').doc(accountId).update({status, updatedAt:now8601()});
+  await audit('staff.status',{bank,accountId,status});
+  toast(`Account marked ${status}.`);
+}
+
+
+/* ── Network-wide administrator announcements ── */
+function subscribeNetworkNotices(){
+  let host=$('uur-network-notices');
+  if(!host){host=document.createElement('div');host.id='uur-network-notices';document.body.prepend(host);}
+  const un=db.collection('networkNotices').orderBy('createdAt','desc').limit(5).onSnapshot(s=>{
+    const now=Date.now(),items=s.docs.map(d=>({id:d.id,...d.data()})).filter(n=>n.active!==false&&(!n.expiresAt||dateFromAny(n.expiresAt).getTime()>=now)).slice(0,3);
+    host.innerHTML=items.map(n=>`<div class="uur-network-notice uur-network-${esc(n.severity||'info')}"><div><b>${esc(n.title||'Network notice')}</b><span>${esc(n.body||'')}</span></div><small>${esc(n.by||'Union of the United Republics Administration')}</small></div>`).join('');
+    host.style.display=items.length?'block':'none';
+  },e=>console.warn('network notices',e));
+  G.unsubs.push(un);
+}
+
+/* ── Auth session boot for every page ──
+   opts: { requireAuth:true, onReady(profile), brand:'IUB' } */
+function bootPage(opts){
+  ensureChrome();
+  auth.onAuthStateChanged(async user=>{
+    if(!user){
+      if(opts.requireAuth!==false){ location.href='index.html'; return; }
+      if(opts.onSignedOut) opts.onSignedOut();
+      return;
+    }
+    G.user=user;
+    G.username=(user.email||'').replace(FAKE_DOMAIN,'');
+    try{
+      const uref=db.collection('users').doc(user.uid);
+      let snap=await uref.get();
+      if(!snap.exists){ await uref.set({username:G.username, role:'user', createdAt:now8601()}); snap=await uref.get(); }
+      G.profile=snap.data()||{};
+      G.role = 'user';
+      if(ADMINS.includes(G.username) || G.profile.role==='admin') G.role='admin';
+      else { try{ const a=await db.collection('admins').doc(user.uid).get(); if(a.exists) G.role='admin'; }catch{} }
+      if(G.role!=='admin' && G.profile.role==='manager'){ G.role='manager'; G.managerBank=G.profile.managerBank||'ALL'; }
+      await loadOwnedAccounts();
+      subscribeFx(opts.onFx);
+      startPresence();
+      subscribeNetworkNotices();
+      if(opts.onReady) await opts.onReady(G.profile);
+    }catch(err){
+      console.error('boot failed',err);
+      toast('Could not load your profile: '+(err.message||err),false);
+    }
+  });
+}
+async function doLogout(){
+  try{ await setPresence(false); }catch{}
+  G.unsubs.forEach(u=>{try{u()}catch{}}); G.unsubs=[];
+  if(G.presenceTimer) clearInterval(G.presenceTimer);
+  await auth.signOut();
+  location.href='index.html';
+}
+
+/* ── Shared subscriptions used by bank pages ── */
+function subscribeAccount(accountId, cb){
+  const un=db.collection('accounts').doc(accountId).onSnapshot(d=>cb(d.exists?{...d.data(),id:d.id}:null), e=>console.error('acct listen',e));
+  G.unsubs.push(un); return un;
+}
+function subscribeTransactions(accountId, cb, lim=300){
+  const un=db.collection('transactions').where('accountId','==',accountId).limit(lim).onSnapshot(s=>{
+    cb(s.docs.map(d=>({...d.data(),id:d.id})).sort((a,b)=>dateFromAny(b.createdAt)-dateFromAny(a.createdAt)));
+  }, e=>console.error('tx listen',e));
+  G.unsubs.push(un); return un;
+}
+
+/* ── CSV export ── */
+function csvCell(v){ const s=String(v??''); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; }
+function downloadTextFile(name, text){
+  const blob=new Blob([text],{type:'text/csv'}); const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href);
+}
+function exportStatement(account, txs){
+  const rows=[['Date','Type','Amount','Currency','Description']];
+  (txs||[]).forEach(t=>rows.push([fmtDateTime(t.createdAt),t.type,Number(t.amount||0).toFixed(2),accountCurrency(account),t.description||'']));
+  downloadTextFile(`${bankName(account)}-statement-${(account.name||'account').replace(/\s+/g,'_')}.csv`, rows.map(r=>r.map(csvCell).join(',')).join('\n'));
+  toast('Statement downloaded.');
+}
+
+/* ── Shared chrome CSS (toasts, modal, staff cards, portal switcher) ── */
+(function(){
+  const css=document.createElement('style');
+  css.textContent=`
+#uur-toasts{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.uur-toast{padding:12px 18px;border-radius:10px;font:600 13px/1.4 system-ui,sans-serif;color:#fff;max-width:340px;opacity:0;transform:translateY(8px);transition:all .3s;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.uur-toast.show{opacity:1;transform:none}
+.uur-toast.ok{background:#15803d}.uur-toast.bad{background:#b91c1c}
+#uur-modal{position:fixed;inset:0;background:rgba(4,8,16,.66);backdrop-filter:blur(4px);z-index:9000;display:none;align-items:flex-start;justify-content:center;padding:6vh 16px;overflow:auto}
+#uur-modal.open{display:flex}
+.uur-modal-card{background:var(--modal-bg,#101826);color:var(--modal-fg,#e6edf5);border:1px solid rgba(255,255,255,.12);border-radius:16px;max-width:640px;width:100%;padding:24px;box-shadow:0 40px 80px rgba(0,0,0,.5)}
+.uur-modal-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+#uur-modal-title{font-size:18px;font-weight:800}
+#uur-modal-sub{font-size:12.5px;opacity:.7;margin:6px 0 16px}
+.uur-modal-x{background:transparent;border:0;color:inherit;font-size:16px;cursor:pointer;opacity:.6}
+.uur-modal-x:hover{opacity:1}
+#uur-modal-foot{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+.staff-card{display:flex;gap:14px;padding:14px;border-radius:12px;border:1px solid var(--staff-border,rgba(127,127,127,.25));background:var(--staff-bg,rgba(127,127,127,.06));margin-bottom:10px}
+.staff-avatar{width:46px;height:46px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;background:var(--staff-avatar,#334155);color:#fff}
+.staff-name{font-weight:700;font-size:14px}.staff-title{font-size:12px;opacity:.75;margin:1px 0 4px;font-weight:600}
+.staff-bio{font-size:12px;opacity:.65;line-height:1.45}
+.uur-switcher{position:fixed;bottom:18px;left:18px;z-index:8000}
+.uur-switcher-btn{width:52px;height:52px;border-radius:50%;border:1px solid rgba(255,255,255,.2);background:#0b1220;color:#fff;font-weight:800;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.4);font-size:11px;letter-spacing:.05em}
+.uur-switcher-menu{position:absolute;bottom:60px;left:0;background:#0d1526;border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:8px;display:none;min-width:230px;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.uur-switcher.open .uur-switcher-menu{display:block}
+.uur-switcher-menu a{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;color:#dbe4f0;text-decoration:none;font:600 13px system-ui,sans-serif}
+.uur-switcher-menu a:hover{background:rgba(255,255,255,.07)}
+.uur-switcher-menu img{width:30px;height:auto}
+#uur-network-notices{display:none;position:relative;z-index:8500;font-family:system-ui,sans-serif}
+.uur-network-notice{display:flex;justify-content:space-between;gap:16px;align-items:center;padding:9px 18px;border-bottom:1px solid rgba(255,255,255,.14);background:#172033;color:#edf4ff;font-size:12px;line-height:1.45}
+.uur-network-notice b{margin-right:8px}.uur-network-notice span{opacity:.9}.uur-network-notice small{opacity:.7;white-space:nowrap;font-size:10px}.uur-network-warning{background:#4a3508;color:#fff0b0}.uur-network-critical{background:#4b1118;color:#ffd3d7}
+@media(max-width:700px){.uur-network-notice{align-items:flex-start;flex-direction:column;gap:3px}.uur-network-notice small{white-space:normal}}
+`;
+  document.head.appendChild(css);
+})();
+
+/* ── Floating network switcher (every brand page gets one) ── */
+function mountSwitcher(current){
+  const wrap=document.createElement('div'); wrap.className='uur-switcher';
+  const links=Object.values(BRANDS).filter(b=>b.short!==current)
+    .map(b=>`<a href="${b.page}"><img src="${b.logo}" alt=""><span>${esc(b.name)}</span></a>`).join('');
+  const adminLink=isAdmin()&&current!=='ADMIN'?`<a href="admin.html"><span style="width:30px;text-align:center;font-size:15px">⚙</span><span>Network Administration</span></a>`:'';
+  wrap.innerHTML=`<div class="uur-switcher-menu">
+      <a href="index.html"><span style="width:30px;text-align:center;font-size:16px">⌂</span><span>Union Portal Home</span></a>${adminLink}${links}
+      <a href="#" onclick="doLogout();return false"><span style="width:30px;text-align:center;font-size:15px">⎋</span><span>Sign out</span></a>
+    </div><button class="uur-switcher-btn" title="Union of the United Republics Financial Network">U.U.R</button>`;
+  wrap.querySelector('button').addEventListener('click',()=>wrap.classList.toggle('open'));
+  document.addEventListener('click',e=>{ if(!wrap.contains(e.target)) wrap.classList.remove('open'); });
+  document.body.appendChild(wrap);
+}
