@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>U.U.R. Business Migration Guide</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <style>
+  :root{--bg:#07101d;--panel:#101f33;--line:rgba(142,177,232,.2);--text:#edf4ff;--muted:#9aabc2;--accent:#5b89ff;--good:#35c884;--warn:#f0b959}*{box-sizing:border-box}body{max-width:980px;margin:0 auto;padding:38px 24px 90px;background:radial-gradient(800px 500px at 10% -10%,rgba(91,137,255,.2),transparent 60%),var(--bg);color:var(--text);font:16px/1.65 Inter,system-ui,sans-serif}h1,h2,h3{font-family:Georgia,serif;line-height:1.2}h1{font-size:38px}h2{margin-top:42px;padding-top:18px;border-top:1px solid var(--line)}h3{margin-top:28px;color:#c9d8ff}p,li{color:#cfdbeb}a{color:#9db8ff}.nav{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:30px}.nav a{border:1px solid var(--line);border-radius:9px;padding:8px 11px;text-decoration:none;background:rgba(255,255,255,.035)}code{background:#172840;border:1px solid var(--line);border-radius:5px;padding:2px 5px}pre{background:#0a1423;border:1px solid var(--line);border-radius:12px;padding:15px;overflow:auto}blockquote{border-left:3px solid var(--accent);margin-left:0;padding:10px 14px;background:rgba(91,137,255,.07);color:var(--muted)}strong{color:#fff}hr{border:0;border-top:1px solid var(--line)}
+  </style>
+</head>
+<body><nav class="nav"><a href="advanced-admin.html">← Programs & Economy Admin</a><a href="index.html">Network Portal</a><a href="services.html">Finance Services</a></nav>
+<header id="title-block-header">
+<h1 class="title">U.U.R. Business Migration Guide</h1>
+</header>
+<h1 id="u.u.r.-finance-network-legacy-business-migration-guide">U.U.R.
+Finance Network — Legacy Business Migration Guide</h1>
+<p>This guide converts an existing business that currently has its own
+username/password into a proper business entity under the real owner’s
+normal player login.</p>
+<p>The migration preserves the existing bank accounts and records. It
+does not recreate balances or erase transaction history.</p>
+<h2 id="before-you-begin">Before you begin</h2>
+<ol type="1">
+<li>Deploy the updated website files, including:
+<ul>
+<li><code>advanced-admin.html</code></li>
+<li><code>services.html</code></li>
+<li><code>shared.js</code></li>
+<li>the updated bank, CSE, casino, and portal pages</li>
+</ul></li>
+<li>Publish the included <code>firestore.rules</code> in Firebase.</li>
+<li>Confirm the future owner already has a normal personal login.</li>
+<li>Sign in as a recognized administrator.</li>
+<li>Open <strong>Programs &amp; Economy Administration</strong> from the
+portal or network switcher.</li>
+<li>Open the <strong>Businesses &amp; Migration</strong> tab.</li>
+<li>Write down the legacy business’s current balances, stock holdings,
+loans, and important records as an external backup.</li>
+<li>For extra safety, export a network JSON snapshot from the core Admin
+Console before migrating.</li>
+</ol>
+<h2 id="migration-steps">Migration steps</h2>
+<h3 id="select-the-legacy-business-login">1. Select the legacy business
+login</h3>
+<p>Under <strong>Legacy business migration</strong>, choose the username
+that currently represents the business.</p>
+<p>This is the old Firebase Auth user whose UID is attached to the
+business accounts and records.</p>
+<h3 id="select-the-new-personal-owner">2. Select the new personal
+owner</h3>
+<p>Choose the real player’s normal account under <strong>New personal
+owner</strong>.</p>
+<p>The owner will sign in with this personal account after migration.
+They will not need to use the old business password.</p>
+<h3 id="enter-the-business-identity">3. Enter the business identity</h3>
+<p>Enter:</p>
+<ul>
+<li>Business name</li>
+<li>Industry</li>
+<li>What should happen to the old login</li>
+</ul>
+<p>Available old-login options:</p>
+<ul>
+<li><strong>Retire login immediately:</strong> Recommended. The old
+login is blocked by <code>shared.js</code> and directs the user to sign
+in through the owner account.</li>
+<li><strong>Keep as business manager:</strong> The old login remains
+available as a limited business staff identity.</li>
+<li><strong>Keep temporarily active:</strong> Useful for a short
+verification period before retiring it manually.</li>
+</ul>
+<h3 id="preview-the-migration">4. Preview the migration</h3>
+<p>Press <strong>Preview migration</strong>.</p>
+<p>The preview counts records associated with the old UID,
+including:</p>
+<ul>
+<li>Bank accounts</li>
+<li>Stock positions</li>
+<li>Transactions</li>
+<li>Loans</li>
+<li>Bills</li>
+<li>MERALD vaults</li>
+<li>Certificates</li>
+<li>Casino records</li>
+<li>Bond holdings</li>
+<li>Fund holdings</li>
+<li>Tax records</li>
+</ul>
+<p>Review the counts. Stop if the expected business accounts or
+positions are missing.</p>
+<h3 id="run-the-migration">5. Run the migration</h3>
+<p>Press <strong>Run migration</strong> and confirm the warning.</p>
+<p>The tool then:</p>
+<ol type="1">
+<li>Creates a document in <code>businesses/{businessId}</code>.</li>
+<li>Adds the new owner in
+<code>businessMembers/{businessId}_{ownerUid}</code> with the
+<code>owner</code> role and <code>all</code> permissions.</li>
+<li>Optionally adds the old login as a limited manager.</li>
+<li>Converts matching bank accounts into business accounts by adding:
+<ul>
+<li><code>ownerType: "business"</code></li>
+<li><code>businessId</code></li>
+<li><code>businessName</code></li>
+<li><code>legacyOwnerUid</code></li>
+</ul></li>
+<li>Changes account control to the new owner while preserving the
+original account document IDs and balances.</li>
+<li>Converts matching stock positions into business-owned
+positions.</li>
+<li>Adds the business ID and legacy UID to identifiable historical
+records.</li>
+<li>Updates the old user profile’s <code>loginStatus</code>.</li>
+<li>Creates a record in <code>businessMigrations</code> containing the
+old owner, new owner, business ID, migration mode, affected-record
+counts, administrator, and timestamps.</li>
+<li>Creates an entry in <code>adminLogs</code>.</li>
+</ol>
+<h2 id="what-remains-unchanged">What remains unchanged</h2>
+<p>The migration intentionally preserves:</p>
+<ul>
+<li>Existing account IDs</li>
+<li>Current balances</li>
+<li>Transaction document IDs</li>
+<li>Loan and bill document IDs</li>
+<li>Stock tickers</li>
+<li>Stock share counts</li>
+<li>Historical descriptions</li>
+<li>Created dates</li>
+</ul>
+<p>Past transactions may still display the historical business username
+in their description. This is intentional and preserves the original
+record.</p>
+<h2 id="verify-the-migration">Verify the migration</h2>
+<h3 id="owner-verification">Owner verification</h3>
+<ol type="1">
+<li>Sign out of the administrator account.</li>
+<li>Sign in using the new owner’s normal personal login.</li>
+<li>Open <strong>Finance Services</strong>.</li>
+<li>Confirm the business appears in the Business Center selector.</li>
+<li>Confirm all business bank accounts appear under the business.</li>
+<li>Open the CSE.</li>
+<li>Select a business trading account.</li>
+<li>Confirm the CSE says <strong>Operating as [Business
+Name]</strong>.</li>
+<li>Confirm existing stock positions appear in the business
+portfolio.</li>
+<li>Confirm the business appears correctly in Share Ownership and Top
+Market Owners.</li>
+</ol>
+<h3 id="banking-verification">Banking verification</h3>
+<p>Check each migrated account in the core Admin Console:</p>
+<ul>
+<li>Balance is unchanged.</li>
+<li>Bank is unchanged.</li>
+<li>Currency is unchanged.</li>
+<li>Status is correct.</li>
+<li><code>ownerType</code> is <code>business</code>.</li>
+<li><code>businessId</code> points to the new business.</li>
+<li><code>legacyOwnerUid</code> contains the old login UID.</li>
+</ul>
+<h3 id="record-verification">Record verification</h3>
+<p>Review:</p>
+<ul>
+<li>Transactions</li>
+<li>Loans</li>
+<li>Bills</li>
+<li>Vaults</li>
+<li>Certificates</li>
+<li>Casino history</li>
+<li>Stocks and positions</li>
+<li>Taxes and investment holdings</li>
+</ul>
+<p>The business should be able to operate through the new owner’s login
+without using the old credentials.</p>
+<h2 id="retire-a-temporarily-active-login-later">Retire a temporarily
+active login later</h2>
+<p>To retire a legacy login manually:</p>
+<ol type="1">
+<li>Open Firebase Console.</li>
+<li>Open Firestore Database.</li>
+<li>Open <code>users/{legacyUid}</code>.</li>
+<li>Set:</li>
+</ol>
+<pre class="text"><code>loginStatus: &quot;retired&quot;</code></pre>
+<p>The next time that login opens the website, <code>shared.js</code>
+signs it out and directs it to the normal owner-login workflow.</p>
+<h2 id="add-additional-business-staff">Add additional business
+staff</h2>
+<p>In <strong>Programs &amp; Economy Administration</strong>:</p>
+<ol type="1">
+<li>Open <strong>Businesses &amp; Migration</strong>.</li>
+<li>Find the business.</li>
+<li>Press <strong>Add member</strong>.</li>
+<li>Enter the person’s normal username.</li>
+<li>Choose a role and permissions.</li>
+</ol>
+<p>Suggested permissions:</p>
+<ul>
+<li>Owner: <code>all</code></li>
+<li>Administrator: <code>all</code></li>
+<li>Accountant: <code>view,reports,invoices</code></li>
+<li>Payroll manager: <code>view,payroll</code></li>
+<li>CSE officer: <code>view,stock</code></li>
+<li>Employee: <code>view</code></li>
+</ul>
+<h2 id="migrating-a-business-that-already-issued-stock">Migrating a
+business that already issued stock</h2>
+<p>The migration converts positions owned by the old login into
+positions owned by the business.</p>
+<p>After migration:</p>
+<ol type="1">
+<li>Open the CSE as the new owner.</li>
+<li>Choose the business account in the Trading Account selector.</li>
+<li>Verify the business’s shares.</li>
+<li>Verify ownership percentages.</li>
+<li>Check that the issuer stock’s <code>issuerBusinessId</code> and
+<code>issuerAccountId</code> are correct.</li>
+<li>If the stock document predates the new business system, an
+administrator can edit it in the core CSE stock editor and set the
+issuer account.</li>
+</ol>
+<h2 id="rollback-procedure">Rollback procedure</h2>
+<p>There is no one-click rollback because Firestore changes span several
+collections. The <code>businessMigrations</code> document is the
+rollback map.</p>
+<p>To reverse a migration:</p>
+<ol type="1">
+<li>Open the migration record and copy:
+<ul>
+<li><code>businessId</code></li>
+<li><code>oldOwnerUid</code></li>
+<li><code>newOwnerUid</code></li>
+<li>affected counts</li>
+</ul></li>
+<li>Change the migrated account documents back to:
+<ul>
+<li><code>ownerUid: oldOwnerUid</code></li>
+<li>remove or clear <code>ownerType</code>, <code>businessId</code>,
+<code>businessName</code>, and <code>legacyOwnerUid</code></li>
+</ul></li>
+<li>Change migrated positions back to the old owner UID and remove
+business fields.</li>
+<li>Restore any other records using <code>legacyOwnerUid</code> as the
+search field.</li>
+<li>Change <code>users/{oldOwnerUid}.loginStatus</code> back to
+<code>active</code>.</li>
+<li>Delete the created business-membership documents.</li>
+<li>Archive or delete the new business document only after confirming no
+records still reference it.</li>
+<li>Add an explanatory entry to <code>adminLogs</code>.</li>
+</ol>
+<p>For important migrations, keep a Firebase export or Admin Console
+snapshot before starting. That is safer than relying only on manual
+rollback.</p>
+<h2 id="firebase-authentication-limitation">Firebase Authentication
+limitation</h2>
+<p>The website cannot truly disable or delete a Firebase Authentication
+user from client-side JavaScript. The migration retires the login at the
+application level using <code>users/{uid}.loginStatus</code>.</p>
+<p>To permanently disable the old Auth account, use the Firebase Console
+Authentication user list or a trusted Admin SDK/Cloud Function.</p>
+</body>
+</html>

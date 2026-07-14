@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>MERALD — Banking that moves at your speed</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#06100b;--card:#0b1a12;--card2:#0e2317;--line:rgba(52,211,153,.14);--em:#10b981;--em2:#34d399;--gold:#d4af5f;--txt:#e7f5ec;--mut:#6f8a7c;
+--modal-bg:#0e2317;--modal-fg:#e7f5ec;--staff-border:rgba(52,211,153,.2);--staff-bg:rgba(52,211,153,.05);--staff-avatar:#10b981}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font-family:Outfit,system-ui,sans-serif;min-height:100vh}
+.glow{position:fixed;inset:0;pointer-events:none;background:radial-gradient(800px 400px at 80% -10%,rgba(16,185,129,.13),transparent 60%)}
+.nav{display:flex;align-items:center;gap:20px;padding:16px 26px;position:sticky;top:0;z-index:40;background:rgba(6,16,11,.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.nav img{height:30px}
+.nav a{color:var(--mut);text-decoration:none;font-weight:600;font-size:13.5px;padding:7px 13px;border-radius:99px}
+.nav a:hover,.nav a.on{color:var(--txt);background:rgba(52,211,153,.1)}
+.nav .portal-link{display:inline-flex;align-items:center;border:1px solid rgba(52,211,153,.28);padding:8px 11px;background:rgba(16,185,129,.07);color:var(--em2);font-size:11px;text-transform:uppercase;letter-spacing:.06em;border-radius:10px}.nav .portal-link:hover{background:var(--em);color:#04150c}
+.nav .who{margin-left:auto;font-size:12px;color:var(--mut)}
+.wrap{max-width:1020px;margin:0 auto;padding:30px 22px 90px}
+.grid{display:grid;grid-template-columns:1.2fr 1fr;gap:20px}
+@media(max-width:840px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:24px;margin-bottom:20px}
+.panel h2{font-size:17px;font-weight:700;margin-bottom:4px}
+.panel .sub{font-size:12.5px;color:var(--mut);margin-bottom:16px}
+/* debit card visual */
+.mcard{position:relative;border-radius:22px;padding:26px;background:linear-gradient(135deg,#0b3d27,#062015 60%,#0a2e1e);border:1px solid rgba(52,211,153,.3);overflow:hidden;min-height:190px;box-shadow:0 30px 60px rgba(0,0,0,.5)}
+.mcard::after{content:'';position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(212,175,95,.22),transparent 70%)}
+.mcard img{height:22px;opacity:.95}
+.mcard .bal{font-size:38px;font-weight:800;letter-spacing:-.02em;margin:20px 0 4px}
+.mcard .lbl{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--mut)}
+.mcard .num{font-size:14px;letter-spacing:.22em;color:#a8cbb8;margin-top:18px;font-weight:600}
+.mcard .status{position:absolute;top:24px;right:24px;font-size:10px;font-weight:800;letter-spacing:.1em;padding:4px 11px;border-radius:99px;background:rgba(52,211,153,.15);border:1px solid rgba(52,211,153,.4);color:var(--em2)}
+.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:18px}
+.qbtn{background:var(--card2);border:1px solid var(--line);border-radius:16px;padding:14px 8px;text-align:center;cursor:pointer;transition:.15s;color:var(--txt)}
+.qbtn:hover{border-color:rgba(52,211,153,.5);transform:translateY(-2px)}
+.qbtn .i{font-size:19px}.qbtn .t{font-size:11px;font-weight:600;margin-top:6px;color:var(--mut)}
+label{display:block;font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);margin-bottom:6px}
+input,select{width:100%;padding:12px 14px;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:12px;color:var(--txt);font:500 14px Outfit;outline:none}
+input:focus,select:focus{border-color:rgba(52,211,153,.55)}
+.f{margin-bottom:13px}.frow{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.btn{padding:12px 20px;border-radius:12px;border:0;font:700 13.5px Outfit;cursor:pointer;transition:.15s}
+.btn-em{background:var(--em);color:#04150c}.btn-em:hover{background:var(--em2)}
+.btn-line{background:transparent;color:var(--em2);border:1px solid var(--line)}
+.btn-sm{padding:7px 13px;font-size:12px}
+.vault{display:flex;align-items:center;gap:14px;background:var(--card2);border:1px solid var(--line);border-radius:16px;padding:15px;margin-bottom:10px}
+.vault .ic{width:42px;height:42px;border-radius:12px;background:rgba(212,175,95,.12);border:1px solid rgba(212,175,95,.3);display:flex;align-items:center;justify-content:center;font-size:18px}
+.vault .nm{font-weight:700;font-size:14px}
+.vault .pr{height:5px;border-radius:99px;background:rgba(255,255,255,.07);margin-top:7px;overflow:hidden;width:170px}
+.vault .pr i{display:block;height:100%;background:linear-gradient(90deg,var(--em),var(--gold))}
+.vault .amt{margin-left:auto;text-align:right;font-weight:800}
+.vault .amt small{display:block;font-weight:500;color:var(--mut);font-size:11px}
+.tx{display:flex;gap:12px;align-items:center;padding:11px 2px;border-bottom:1px solid rgba(255,255,255,.05);font-size:13px}
+.tx .ic{width:34px;height:34px;border-radius:11px;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:15px;flex:none}
+.tx .d{color:var(--mut);font-size:11px}
+.tx .amt{margin-left:auto;font-weight:700;white-space:nowrap}
+.pos{color:var(--em2)}.neg{color:#f0836e}
+.empty{padding:24px;text-align:center;color:var(--mut);font-size:13px}
+.bars{display:flex;gap:8px;align-items:flex-end;height:120px;margin-top:8px}
+.bar{flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:4px}
+.bar i{display:block;border-radius:6px 6px 3px 3px;background:linear-gradient(180deg,var(--em2),var(--em))}
+.bar b{display:block;border-radius:6px 6px 3px 3px;background:rgba(240,131,110,.75)}
+.bar span{font-size:9.5px;color:var(--mut);text-align:center}
+.guard{display:flex;align-items:center;justify-content:space-between;background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px}
+.hide{display:none!important}
+footer{border-top:1px solid var(--line);padding:28px 26px;font-size:11.5px;color:var(--mut);line-height:1.8;text-align:center}
+</style>
+</head>
+<body data-brand="MERALD">
+<div class="glow"></div>
+<nav class="nav">
+  <img src="assets/merald.png" alt="MERALD">
+  <a class="portal-link" href="index.html">← Network Portal</a>
+  <a href="#home" class="on">Home</a><a href="#vaults">Vaults</a><a href="#insights">Insights</a><a href="#guard">Security</a>
+  <span class="who" id="nav-user"></span>
+</nav>
+
+<div class="wrap">
+  <div class="grid" id="home">
+    <div>
+      <div class="mcard">
+        <span class="status" id="card-status">ACTIVE</span>
+        <img src="assets/merald.png" alt="">
+        <div class="bal" id="card-bal">EM 0.00</div>
+        <div class="lbl">Available balance</div>
+        <div class="num" id="card-num">•••• •••• •••• ••••</div>
+      </div>
+      <div class="quick">
+        <div class="qbtn" onclick="openSend()"><div class="i">↗</div><div class="t">Send</div></div>
+        <div class="qbtn" onclick="openTopup()"><div class="i">↘</div><div class="t">Add money</div></div>
+        <div class="qbtn" onclick="location.href='#vaults'"><div class="i">🔒</div><div class="t">Vaults</div></div>
+        <div class="qbtn" onclick="exportStatement(M.account,M.txs)"><div class="i">⬇</div><div class="t">Statement</div></div>
+      </div>
+
+      <div class="panel" style="margin-top:20px" id="insights">
+        <h2>Spending insights</h2><div class="sub">Money in vs out, last 7 Central-City days.</div>
+        <div class="bars" id="bars"></div>
+      </div>
+
+      <div class="panel" id="guard">
+        <h2>Transfer Guard</h2><div class="sub">MERALD-side protection on outgoing transfers.</div>
+        <div class="guard"><div><b style="font-size:14px">Lock all outgoing transfers</b><div class="sub" style="margin:2px 0 0">Freezes sends from this account until you unlock.</div></div>
+          <button class="btn btn-line btn-sm" id="guard-lock-btn" onclick="toggleGuard()">Lock</button></div>
+        <div class="frow"><div class="f"><label>Daily transfer limit (Emerul, 0 = none)</label><input id="guard-limit" type="number" min="0" step="1"></div>
+        <div class="f" style="display:flex;align-items:flex-end"><button class="btn btn-em" style="width:100%" onclick="saveGuard()">Save limit</button></div></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel" id="vaults">
+        <h2>Vaults</h2><div class="sub">Set money aside for goals. Vault funds can't be spent until moved back.</div>
+        <div id="vault-list"><div class="empty">No vaults yet.</div></div>
+        <div class="frow"><div class="f"><label>Vault name</label><input id="v-name" placeholder="New PC, Vacation…"></div>
+        <div class="f"><label>Target (Emerul)</label><input id="v-target" type="number" min="0" step="1"></div></div>
+        <button class="btn btn-em" onclick="createVault()">Create vault</button>
+      </div>
+
+      <div class="panel" data-uur-collapsible="activity">
+        <div class="uur-collapse-head"><div><h2>Activity</h2><div class="sub" id="tx-sub"></div></div><button class="uur-collapse-btn" type="button">Minimize</button></div>
+        <div class="uur-collapsible-body"><div id="tx-list"><div class="empty">Loading…</div></div></div>
+      </div>
+
+      <div class="panel hide" id="bank-owner-panel"></div>
+
+      <div class="panel">
+        <h2>MERALD team</h2><div class="sub">Humans on standby.</div>
+        <div id="team"></div>
+      </div>
+
+      <div class="panel hide" id="mgr-desk" style="border-color:rgba(212,175,95,.5)">
+        <h2>🔑 Member Ops desk</h2><div class="sub">MERALD accounts · staff only.</div>
+        <div class="f"><input id="mgr-search" placeholder="Search member accounts…" oninput="renderMgr()"></div>
+        <div id="mgr-list" style="max-height:320px;overflow:auto"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>MERALD is a digital banking brand of the Union of the United Republics Financial Network · Deposits held at member institutions · Vault yields, where offered, are role-play instruments<br>merald.uur · support@merald.uur · © MERALD Banking</footer>
+
+<script src="shared.js"></script>
+<script>
+const M={account:null,txs:[],vaults:[],all:[]};
+function myId(){ return G.meraldAccountId; }
+
+function renderCard(){
+  const a=M.account; if(!a) return;
+  $('card-bal').textContent=fmt(a.balance);
+  $('card-num').textContent='•••• •••• •••• '+String(a.id||'0000').replace(/[^a-zA-Z0-9]/g,'').slice(-4).toUpperCase();
+  const st=$('card-status'); const locked=!!a.meraldTransferLocked;
+  st.textContent=accountStatus(a)!=='active'?accountStatus(a).toUpperCase():locked?'GUARD ON':'ACTIVE';
+  $('guard-lock-btn').textContent=locked?'Unlock':'Lock';
+  if(document.activeElement!==$('guard-limit')) $('guard-limit').value=Number(a.meraldDailyTransferLimit||0);
+}
+function txIcon(t){ return /transfer_in|deposit|interest|win|disburse|redeem/.test(t)?'⬇':/vault/.test(t)?'🔒':'⬆'; }
+function renderTxs(){
+  $('tx-sub').textContent=`${M.txs.length} records`;
+  $('tx-list').innerHTML=M.txs.slice(0,30).map(t=>{
+    const out=/out|fee|payment|purchase|loss|repay|vault_in/.test(t.type);
+    return `<div class="tx"><div class="ic">${txIcon(t.type)}</div><div><div>${esc((t.description||t.type).slice(0,60))}</div><div class="d">${fmtDateTime(t.createdAt)}</div></div><div class="amt ${out?'neg':'pos'}">${out?'−':'+'}${fmt(t.amount)}</div></div>`;
+  }).join('')||'<div class="empty">Nothing yet — add some money.</div>';
+}
+function renderBars(){
+  const days=[...Array(7)].map((_,i)=>{const d=new Date();d.setDate(d.getDate()-(6-i));return d;});
+  const html=days.map(d=>{
+    const key=d.toDateString();
+    let inn=0,out=0;
+    M.txs.forEach(t=>{ if(dateFromAny(t.createdAt).toDateString()!==key)return;
+      if(/out|fee|payment|purchase|loss|repay|vault_in/.test(t.type)) out+=Number(t.amount||0); else inn+=Number(t.amount||0); });
+    const mx=Math.max(1,inn,out);
+    return `<div class="bar"><i style="height:${Math.round(inn/mx*80)+4}px" title="In ${fmt(inn)}"></i><b style="height:${Math.round(out/mx*80)+4}px" title="Out ${fmt(out)}"></b><span>${d.toLocaleDateString(undefined,{weekday:'short'})}</span></div>`;
+  }).join('');
+  $('bars').innerHTML=html;
+}
+function renderVaults(){
+  const icons=['🎯','🏝','💻','🚗','🎁','🏠'];
+  $('vault-list').innerHTML=M.vaults.map((v,i)=>{
+    const pct=v.target>0?Math.min(100,Math.round(Number(v.balance||0)/Number(v.target)*100)):0;
+    return `<div class="vault"><div class="ic">${icons[i%icons.length]}</div>
+      <div><div class="nm">${esc(v.name)}</div><div class="pr"><i style="width:${pct}%"></i></div></div>
+      <div class="amt">${fmt(v.balance)}<small>${v.target>0?`of ${fmt(v.target)} · ${pct}%`:'no target'}</small></div>
+      <span style="display:flex;flex-direction:column;gap:5px">
+        <button class="btn btn-line btn-sm" onclick="vaultMove('${v.id}',1)">+ Add</button>
+        <button class="btn btn-line btn-sm" onclick="vaultMove('${v.id}',-1)">− Take</button>
+      </span></div>`;
+  }).join('')||'<div class="empty">No vaults yet.</div>';
+}
+function renderTeam(){ $('team').innerHTML=staffCards('MERALD'); }
+
+/* actions */
+function openSend(){
+  const opts=Object.values(G.accounts).filter(a=>a.id!==myId()).map(a=>`<option value="${a.id}">${esc(a.name)} (${bankName(a)})</option>`).join('');
+  showModal('Send money','From your MERALD account. Wires to VNB convert to Franks automatically.',
+    `<div class="f"><label>To — my accounts</label><select id="s-to">${opts}</select></div>
+     <div class="f"><label>Or any account ID</label><input id="s-toid" placeholder="Paste destination account ID"></div>
+     <div class="f"><label>Amount (Emerul)</label><input id="s-amt" type="number" step="0.01" min="0"></div>
+     <div class="f"><label>Note</label><input id="s-note"></div>`,
+    `<button class="btn btn-line btn-sm" onclick="closeModal()">Cancel</button>
+     <button class="btn btn-em btn-sm" onclick="doSend()">Send</button>`);
+}
+async function doSend(){
+  const a=M.account;
+  if(a?.meraldTransferLocked) return toast('Transfer Guard is locked. Unlock it first.',false);
+  const lim=Number(a?.meraldDailyTransferLimit||0), amt=Number($('s-amt').value||0);
+  if(lim>0){
+    const today=new Date().toDateString();
+    const sent=M.txs.filter(t=>t.type==='transfer_out'&&dateFromAny(t.createdAt).toDateString()===today).reduce((s,t)=>s+Number(t.amount||0),0);
+    if(sent+amt>lim) return toast(`Daily limit ${fmt(lim)} would be exceeded (sent ${fmt(sent)} today).`,false);
+  }
+  try{
+    const to=($('s-toid').value||'').trim()||$('s-to').value;
+    const r=await transferBetween(myId(),to,amt,$('s-note').value);
+    toast(`Sent ${fmt(r.amt)} → ${r.to.name}.`); closeModal(); await loadOwnedAccounts();
+  }catch(err){ toast(err.message||'Send failed.',false); }
+}
+function openTopup(){
+  const opts=Object.values(G.accounts).filter(a=>a.id!==myId()).map(a=>`<option value="${a.id}">${esc(a.name)} — ${fmtCur(a.balance,accountCurrency(a))} (${bankName(a)})</option>`).join('');
+  showModal('Add money','Pull from another of your accounts into MERALD.',
+    `<div class="f"><label>From</label><select id="t-from">${opts}</select></div>
+     <div class="f"><label>Amount</label><input id="t-amt" type="number" step="0.01" min="0"></div>`,
+    `<button class="btn btn-line btn-sm" onclick="closeModal()">Cancel</button>
+     <button class="btn btn-em btn-sm" onclick="(async()=>{try{await transferBetween($('t-from').value,myId(),$('t-amt').value,'MERALD top-up');toast('Money added.');closeModal();await loadOwnedAccounts();}catch(e){toast(e.message,false)}})()">Add</button>`);
+}
+async function createVault(){
+  const name=($('v-name').value||'').trim(), target=Math.max(0,Number($('v-target').value||0));
+  if(!name) return toast('Name your vault.',false);
+  await db.collection('meraldVaults').add({ownerUid:G.user.uid,ownerUsername:G.username,accountId:myId(),name,target,balance:0,createdAt:now8601(),updatedAt:now8601()});
+  $('v-name').value='';$('v-target').value='';
+  toast('Vault created.');
+}
+function vaultMove(id,dir){
+  const v=M.vaults.find(x=>x.id===id); if(!v)return;
+  showModal(dir>0?`Add to “${v.name}”`:`Take from “${v.name}”`, dir>0?'Moves money from your MERALD balance into the vault.':'Moves money back to your spendable balance.',
+    `<div class="f"><label>Amount (Emerul)</label><input id="vm-amt" type="number" step="0.01" min="0"></div>`,
+    `<button class="btn btn-line btn-sm" onclick="closeModal()">Cancel</button>
+     <button class="btn btn-em btn-sm" onclick="doVaultMove('${id}',${dir})">Confirm</button>`);
+}
+async function doVaultMove(id,dir){
+  const amt=Math.round(Number($('vm-amt').value)*100)/100;
+  if(!amt||amt<=0) return toast('Enter an amount.',false);
+  const accountRef=db.collection('accounts').doc(myId()), vaultRef=db.collection('meraldVaults').doc(id), txRef=db.collection('transactions').doc();
+  try{
+    await db.runTransaction(async tx=>{
+      const [as,vs]=await Promise.all([tx.get(accountRef),tx.get(vaultRef)]);
+      if(!as.exists||!vs.exists) throw new Error('Vault or account missing.');
+      const a=as.data(),v=vs.data();
+      if(dir>0&&Number(a.balance||0)<amt) throw new Error('Insufficient MERALD balance.');
+      if(dir<0&&Number(v.balance||0)<amt) throw new Error('Vault does not hold that much.');
+      tx.update(accountRef,{balance:FV.increment(-dir*amt),updatedAt:now8601()});
+      tx.update(vaultRef,{balance:FV.increment(dir*amt),updatedAt:now8601()});
+      tx.set(txRef,{accountId:myId(),ownerUid:G.user.uid,ownerUsername:G.username,bank:'MERALD',type:dir>0?'vault_in':'vault_out',amount:amt,description:`${dir>0?'Moved to':'Took from'} vault “${v.name}”`,createdAt:now8601(),createdBy:G.user.uid});
+    });
+    closeModal(); toast('Vault updated.');
+  }catch(err){ toast(err.message||'Vault move failed.',false); }
+}
+async function toggleGuard(){
+  const locked=!M.account?.meraldTransferLocked;
+  await db.collection('accounts').doc(myId()).update({meraldTransferLocked:locked,updatedAt:now8601()});
+  toast(locked?'Outgoing transfers locked.':'Transfers unlocked.');
+}
+async function saveGuard(){
+  const limit=Math.max(0,Number($('guard-limit').value||0));
+  await db.collection('accounts').doc(myId()).update({meraldDailyTransferLimit:limit,updatedAt:now8601()});
+  toast('Daily limit saved.');
+}
+
+/* manager desk */
+function renderMgr(){
+  const q=($('mgr-search').value||'').toLowerCase();
+  $('mgr-list').innerHTML=M.all.filter(a=>!q||String(a.name).toLowerCase().includes(q)||String(a.ownerUsername||'').toLowerCase().includes(q)).slice(0,50).map(a=>`
+    <div class="vault"><div><div class="nm">${esc(a.name)}</div><div class="d" style="font-size:11px;color:var(--mut)">${esc(a.ownerUsername||'')} · ${accountStatus(a)}</div></div>
+    <div class="amt">${fmt(a.balance)}</div>
+    <span style="display:flex;flex-direction:column;gap:5px">
+      <button class="btn btn-line btn-sm" onclick="mgrAdj('${a.id}')">Adjust</button>
+      <button class="btn btn-line btn-sm" onclick="staffSetStatus('MERALD','${a.id}','${accountStatus(a)==='frozen'?'active':'frozen'}')">${accountStatus(a)==='frozen'?'Unfreeze':'Freeze'}</button>
+    </span></div>`).join('')||'<div class="empty">No accounts.</div>';
+}
+function mgrAdj(id){
+  showModal('Adjust balance','Positive credits, negative debits. Logged.',
+    `<div class="f"><label>Amount (±Emerul)</label><input id="ma-amt" type="number" step="0.01"></div>
+     <div class="f"><label>Memo</label><input id="ma-memo"></div>`,
+    `<button class="btn btn-line btn-sm" onclick="closeModal()">Cancel</button>
+     <button class="btn btn-em btn-sm" onclick="(async()=>{await staffAdjustBalance('MERALD','${id}',Number($('ma-amt').value||0),$('ma-memo').value);closeModal();})()">Post</button>`);
+}
+
+bootPage({
+  async onReady(){
+    $('nav-user').textContent=G.username+(isStaffUser()?` · ${G.role.toUpperCase()}`:'');
+    renderTeam();
+    if(!myId()) return toast('No MERALD account found on your profile.',false);
+    subscribeAccount(myId(),a=>{M.account=a;if(a)G.accounts[a.id]=a;renderCard();});
+    subscribeTransactions(myId(),t=>{M.txs=t;renderTxs();renderBars();});
+    G.unsubs.push(db.collection('meraldVaults').where('ownerUid','==',G.user.uid).limit(20).onSnapshot(s=>{M.vaults=s.docs.map(d=>({...d.data(),id:d.id}));renderVaults();},e=>console.warn(e)));
+    if(canManageBank('MERALD')){
+      $('mgr-desk').classList.remove('hide');
+      G.unsubs.push(db.collection('accounts').where('bank','==','MERALD').onSnapshot(s=>{M.all=s.docs.map(d=>({...d.data(),id:d.id})).sort((a,b)=>String(a.name).localeCompare(String(b.name)));renderMgr();},e=>console.warn(e)));
+    }
+    mountSwitcher('MERALD');
+    await mountBankOwnershipSummary('MERALD');
+  }
+});
+</script>
+</body>
+</html>

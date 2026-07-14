@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Valorianische Nationalbank — Die Nationalbank Valorias</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--wine:#6d1220;--wine2:#8a1a2b;--ink:#191214;--cream:#f6f1e8;--paper:#fdfbf6;--line:#e2d8c6;--mut:#7d7268;--gold:#a08033;
+--modal-bg:#fdfbf6;--modal-fg:#191214;--staff-border:#e2d8c6;--staff-bg:#f6f1e8;--staff-avatar:#6d1220}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--cream);color:var(--ink);font-family:'IBM Plex Sans',system-ui,sans-serif}
+h1,h2,h3,.serif{font-family:'Cormorant Garamond',serif}
+.crestbar{background:var(--ink);color:#d8cfc2;font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;text-align:center;padding:7px}
+.nav{background:var(--paper);border-bottom:4px double var(--wine);display:flex;align-items:center;gap:28px;padding:0 26px;height:86px;position:sticky;top:0;z-index:40}
+.nav img{height:58px}
+.nav a{color:var(--ink);text-decoration:none;font-weight:600;font-size:13.5px;letter-spacing:.02em}
+.nav a:hover{color:var(--wine)}
+.nav .portal-link{display:inline-flex;align-items:center;border:1px solid var(--line);padding:8px 11px;background:var(--cream);color:var(--wine);font-size:11px;text-transform:uppercase;letter-spacing:.06em}.nav .portal-link:hover{background:var(--wine);color:#fff}
+.nav .who{margin-left:auto;font-size:12px;color:var(--mut)}
+.masthead{background:linear-gradient(150deg,var(--wine) 0%,#4a0c16 100%);color:#f4e8e2;padding:52px 26px;text-align:center}
+.masthead h1{font-size:38px;font-weight:600;letter-spacing:.01em}
+.masthead p{margin-top:8px;font-size:14px;color:#d9b7ad;font-style:italic}
+.fixing{max-width:940px;margin:-34px auto 0;background:var(--paper);border:1px solid var(--line);box-shadow:0 20px 50px rgba(25,18,20,.12);display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+.fx-cell{padding:20px 18px;border-right:1px solid var(--line);text-align:center}
+.fx-cell:last-child{border-right:0}
+.fx-cell .p{font-family:'Cormorant Garamond';font-size:26px;font-weight:700;color:var(--wine)}
+.fx-cell .l{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);margin-top:3px}
+.wrap{max-width:940px;margin:0 auto;padding:44px 24px 90px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+@media(max-width:900px){.nav{height:auto;min-height:76px;overflow-x:auto;padding:10px 16px}.nav a{white-space:nowrap}.nav .who{white-space:nowrap}}
+@media(max-width:820px){.cols{grid-template-columns:1fr}}
+.panel{background:var(--paper);border:1px solid var(--line);padding:26px;margin-bottom:24px}
+.panel h2{font-size:24px;color:var(--wine);font-weight:600}
+.panel .rule{width:52px;height:2px;background:var(--gold);margin:9px 0 14px}
+.panel .sub{font-size:13px;color:var(--mut);margin-bottom:16px;line-height:1.6}
+label{display:block;font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);margin-bottom:5px}
+input,select{width:100%;padding:11px 13px;border:1px solid var(--line);background:#fff;font:500 14px 'IBM Plex Sans';color:var(--ink);outline:none}
+input:focus,select:focus{border-color:var(--wine)}
+.f{margin-bottom:13px}.frow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.btn{padding:12px 22px;border:0;font:700 13px 'IBM Plex Sans';letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:.15s}
+.btn-wine{background:var(--wine);color:#fff}.btn-wine:hover{background:var(--wine2)}
+.btn-line{background:transparent;color:var(--wine);border:1px solid var(--wine)}
+.btn-sm{padding:7px 13px;font-size:11px}
+.balbox{border:1px solid var(--line);background:var(--cream);padding:22px;text-align:center;margin-bottom:16px}
+.balbox .n{font-family:'Cormorant Garamond';font-size:40px;font-weight:700;color:var(--wine)}
+.balbox .l{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
+.notice{border-left:3px solid var(--wine);padding:12px 16px;background:var(--cream);margin-bottom:12px}
+.notice .t{font-weight:700;font-size:14px}
+.notice .d{font-size:11px;color:var(--mut);margin:2px 0 6px}
+.notice .b{font-size:13px;line-height:1.6}
+.tx{display:flex;gap:12px;padding:10px 2px;border-bottom:1px solid var(--line);font-size:13px;align-items:center}
+.tx .d{color:var(--mut);font-size:11.5px;min-width:112px}
+.tx .amt{margin-left:auto;font-weight:700;white-space:nowrap}
+.pos{color:#1a6b45}.neg{color:var(--wine)}
+.empty{padding:22px;text-align:center;color:var(--mut);font-size:13px;font-style:italic}
+.preview{font-size:13px;color:var(--mut);margin:-4px 0 12px;min-height:18px}
+.hide{display:none!important}
+footer{background:var(--ink);color:#a89d90;padding:34px 26px;text-align:center;font-size:12px;line-height:1.9}
+footer .serif{color:#d8cfc2;font-size:16px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);text-align:left;padding:8px 6px;border-bottom:2px solid var(--line)}
+td{padding:9px 6px;border-bottom:1px solid var(--line)}
+</style>
+</head>
+<body data-brand="VNB">
+<div class="crestbar">Valorianische Nationalbank · Errichtet 1926 · Hüterin des Valorianischen Franken</div>
+<nav class="nav">
+  <img src="assets/vnb.png" alt="VNB">
+  <a class="portal-link" href="index.html">← Network Portal</a>
+  <a href="#konto">Frank Account</a><a href="#devisen">Exchange Desk</a><a href="#politik">Policy Notices</a><a href="#direktion">Direktion</a>
+  <span class="who" id="nav-user"></span>
+</nav>
+
+<div class="masthead">
+  <h1>Stabilität. Vertrauen. Der Franken.</h1>
+  <p>The National Bank of Valoria — sole issuer of the Valorian Frank (₣) and steward of its exchange.</p>
+</div>
+
+<div class="fixing" id="fixing"></div>
+
+<div class="wrap">
+  <div class="cols">
+    <div>
+      <div class="panel" id="konto">
+        <h2>Your Frank Account</h2><div class="rule"></div>
+        <div class="sub">Deposits at the Nationalbank are denominated in Valorian Franks.</div>
+        <div class="balbox"><div class="n" id="vf-bal">₣0.00</div><div class="l">Franken on deposit · <span id="vf-em-eq"></span></div></div>
+        <div id="open-account-box" class="hide" style="text-align:center;margin-bottom:14px">
+          <button class="btn btn-wine" onclick="openVnb()">Open a Frank account</button>
+        </div>
+        <div class="sub" style="margin-bottom:6px">Account ID (share to receive Franks): <code id="vf-id" style="user-select:all"></code></div>
+        <button class="btn btn-line btn-sm" onclick="exportStatement(V.account,V.txs)">Download statement</button>
+      </div>
+
+      <div class="panel" data-uur-collapsible="ledger">
+        <div class="uur-collapse-head"><div><h2>Ledger</h2></div><button class="uur-collapse-btn" type="button">Minimize</button></div>
+        <div class="uur-collapsible-body"><div class="rule"></div><div id="tx-list"><div class="empty">Loading…</div></div></div>
+      </div>
+
+      <div class="panel hide" id="bank-owner-panel"></div>
+    </div>
+
+    <div>
+      <div class="panel" id="devisen">
+        <h2>Exchange Desk</h2><div class="rule"></div>
+        <div class="sub">Convert between U.U.R. Emerul held at IUB / MERALD and Franks at the daily fixing. A spread of <b id="spread-note">0.5%</b> applies in the Bank's favour.</div>
+        <div class="f"><label>Direction</label><select id="fx-dir" onchange="fxPreview()">
+          <option value="em2vf">Buy Franks — from an Emerul account</option>
+          <option value="vf2em">Sell Franks — to an Emerul account</option></select></div>
+        <div class="f"><label>Counter account (U.U.R. Emerul)</label><select id="fx-em" onchange="fxPreview()"></select></div>
+        <div class="f"><label>Amount to convert</label><input id="fx-amt" type="number" min="0" step="0.01" oninput="fxPreview()"></div>
+        <div class="preview" id="fx-preview"></div>
+        <button class="btn btn-wine" onclick="doFx()">Execute conversion</button>
+      </div>
+
+      <div class="panel" id="politik">
+        <h2>Policy Notices</h2><div class="rule"></div>
+        <div id="notices"><div class="empty">No notices published.</div></div>
+      </div>
+
+      <div class="panel" id="direktion">
+        <h2>Die Direktion</h2><div class="rule"></div>
+        <div id="team"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN: monetary authority -->
+  <div class="panel hide" id="admin-panel" style="border:2px solid var(--wine)">
+    <h2>⚖ Monetary Authority — Admin</h2><div class="rule"></div>
+    <div class="sub">Set the Frank fixing, spread, and publish policy notices. Applies network-wide instantly.</div>
+    <div class="frow">
+      <div class="f"><label>Franks per Emerul (₣/EM)</label><input id="adm-rate" type="number" step="0.0001" min="0.01"></div>
+      <div class="f"><label>Spread % (each side)</label><input id="adm-spread" type="number" step="0.05" min="0" max="10"></div>
+    </div>
+    <button class="btn btn-wine btn-sm" onclick="adminSaveRate()">Publish new fixing</button>
+    <div style="height:20px"></div>
+    <div class="f"><label>Notice title</label><input id="adm-nt"></div>
+    <div class="f"><label>Notice body</label><input id="adm-nb" placeholder="The Rate Committee has resolved…"></div>
+    <button class="btn btn-line btn-sm" onclick="adminPostNotice()">Publish notice</button>
+  </div>
+
+  <!-- MANAGER DESK -->
+  <div class="panel hide" id="mgr-desk" style="border:2px solid var(--gold)">
+    <h2>🔑 Schalterdienst — Staff Desk</h2><div class="rule"></div>
+    <div class="f"><input id="mgr-search" placeholder="Search Frank accounts…" oninput="renderMgr()"></div>
+    <div id="mgr-list" style="max-height:320px;overflow:auto"></div>
+  </div>
+</div>
+
+<footer>
+  <div class="serif">Valorianische Nationalbank</div>
+  Frankenplatz 1, Valoria-Stadt · Gegründet 1926 unter dem Valorianischen Bankgesetz<br>
+  Sole issuing authority of the Valorian Frank (₣) · Member, Union of the United Republics Financial Network<br>
+  <a href="index.html" style="color:#c7a">Network Portal</a> · <a href="iub.html" style="color:#c7a">IUB</a> · <a href="merald.html" style="color:#c7a">MERALD</a> · <a href="cse.html" style="color:#c7a">CSE</a>
+</footer>
+
+<script src="shared.js"></script>
+<script>
+const V={account:null,txs:[],all:[]};
+
+function renderFixing(){
+  const r=fxRate(), sp=Number(G.fx.spreadPct||0);
+  /* derived reference crosses for realism (deterministic offsets) */
+  const refs=[
+    {l:'₣ / Emerul · Official fixing', v:r.toFixed(4)},
+    {l:'Bank buys Emerul at', v:(r*(1-sp/100)).toFixed(4)},
+    {l:'Bank sells Emerul at', v:(r*(1+sp/100)).toFixed(4)},
+    {l:'₣ / MERALD Credit', v:r.toFixed(4)},
+    {l:'Gold oz · Franks', v:(r*1975).toFixed(0)}
+  ];
+  $('fixing').innerHTML=refs.map(x=>`<div class="fx-cell"><div class="p">${x.v}</div><div class="l">${x.l}</div></div>`).join('');
+  $('spread-note').textContent=sp.toFixed(2)+'%';
+  if(isAdmin()){
+    if(document.activeElement!==$('adm-rate'))$('adm-rate').value=r;
+    if(document.activeElement!==$('adm-spread'))$('adm-spread').value=sp;
+  }
+  fxPreview(); renderAccount();
+}
+function renderAccount(){
+  const a=V.account;
+  $('vf-bal').textContent=fmtVF(a?.balance||0);
+  $('vf-em-eq').textContent='≈ '+fmt((Number(a?.balance||0))/fxRate())+' in U.U.R. Emerul';
+  $('vf-id').textContent=a?.id||'—';
+  $('open-account-box').classList.toggle('hide',!!G.vnbAccountId);
+  const emerulAccounts=Object.values(G.accounts).filter(x=>accountCurrency(x)==='EM');
+  $('fx-em').innerHTML=emerulAccounts.map(x=>`<option value="${x.id}">${esc(x.name)} — ${fmt(x.balance)} (${bankName(x)})</option>`).join('');
+}
+function renderTxs(){
+  $('tx-list').innerHTML=V.txs.slice(0,30).map(t=>{
+    const out=/out|fee|payment|loss/.test(t.type);
+    return `<div class="tx"><span class="d">${fmtDateTime(t.createdAt)}</span><span>${esc((t.description||t.type).slice(0,70))}</span><span class="amt ${out?'neg':'pos'}">${out?'−':'+'}${fmtVF(t.amount)}</span></div>`;
+  }).join('')||'<div class="empty">The ledger is empty.</div>';
+}
+function fxPreview(){
+  const dir=$('fx-dir').value, amt=Number($('fx-amt').value||0), el=$('fx-preview');
+  if(!amt){el.textContent='';return;}
+  const q=fxQuote(dir,amt);
+  el.textContent=dir==='em2vf'
+    ? `${fmt(amt)} → ${fmtVF(q.out)} at ₣${q.rate.toFixed(4)}/EM (spread applied)`
+    : `${fmtVF(amt)} → ${fmt(q.out)} at ₣${q.rate.toFixed(4)}/EM (spread applied)`;
+}
+async function openVnb(){ await ensureVnbAccount(); await loadOwnedAccounts(); subscribeVnb(); renderAccount(); }
+async function doFx(){
+  const dir=$('fx-dir').value, amt=Number($('fx-amt').value||0), emerulId=$('fx-em').value;
+  if(!G.vnbAccountId) return toast('Open a Frank account first.',false);
+  if(!emerulId) return toast('Choose an Emerul counter account.',false);
+  try{
+    const from = dir==='em2vf'?emerulId:G.vnbAccountId;
+    const to   = dir==='em2vf'?G.vnbAccountId:emerulId;
+    const r=await transferBetween(from,to,amt,dir==='em2vf'?'FX: bought Franks with Emerul':'FX: sold Franks for Emerul');
+    toast(`Converted ${fmtCur(r.amt,r.fc)} → ${fmtCur(r.credit,r.tc)}.`);
+    $('fx-amt').value=''; fxPreview(); await loadOwnedAccounts(); renderAccount();
+  }catch(err){ toast(err.message||'Conversion failed.',false); }
+}
+
+/* notices */
+function subscribeNotices(){
+  G.unsubs.push(db.collection('vnbNotices').orderBy('createdAt','desc').limit(12).onSnapshot(s=>{
+    $('notices').innerHTML=s.docs.map(d=>{const n=d.data();return `<div class="notice"><div class="t">${esc(n.title)}</div><div class="d">${fmtDateTime(n.createdAt)} · ${esc(n.by||'Direktion')}</div><div class="b">${esc(n.body)}</div></div>`;}).join('')||'<div class="empty">No notices published.</div>';
+  },e=>console.warn('notices',e)));
+}
+async function adminSaveRate(){
+  if(!requireAdmin('set the fixing'))return;
+  const rate=Math.max(0.01,Number($('adm-rate').value||0)), spread=clamp($('adm-spread').value,0,10);
+  await ensureFxSettings();
+  await db.collection('fx').doc('settings').set({vfPerEmerul:rate,spreadPct:spread,updatedAt:now8601(),updatedBy:G.user.uid,updatedByUsername:G.username},{merge:true});
+  await audit('fx.setRate',{vfPerEmerul:rate,spreadPct:spread});
+  toast(`Fixing published: ₣${rate.toFixed(4)}/EM, spread ${spread}%.`);
+}
+async function adminPostNotice(){
+  if(!requireAdmin('publish notices'))return;
+  const title=($('adm-nt').value||'').trim(), body=($('adm-nb').value||'').trim();
+  if(!title||!body) return toast('Provide a title and body.',false);
+  await db.collection('vnbNotices').add({title,body,by:G.username,createdAt:now8601(),createdBy:G.user.uid});
+  $('adm-nt').value='';$('adm-nb').value='';
+  await audit('vnb.notice',{title});
+  toast('Notice published.');
+}
+
+/* manager desk */
+function renderMgr(){
+  const q=($('mgr-search').value||'').toLowerCase();
+  $('mgr-list').innerHTML=V.all.filter(a=>!q||String(a.name).toLowerCase().includes(q)||String(a.ownerUsername||'').toLowerCase().includes(q)).slice(0,50).map(a=>`
+    <div class="tx"><span><b>${esc(a.name)}</b> · ${esc(a.ownerUsername||'')} · ${accountStatus(a)}</span>
+    <span class="amt">${fmtVF(a.balance)}</span>
+    <span style="display:flex;gap:5px;margin-left:10px">
+      <button class="btn btn-line btn-sm" onclick="mgrAdj('${a.id}')">Adjust</button>
+      <button class="btn btn-line btn-sm" onclick="staffSetStatus('VNB','${a.id}','${accountStatus(a)==='frozen'?'active':'frozen'}')">${accountStatus(a)==='frozen'?'Unfreeze':'Freeze'}</button>
+    </span></div>`).join('')||'<div class="empty">No Frank accounts.</div>';
+}
+function mgrAdj(id){
+  showModal('Adjust Frank balance','Positive credits ₣, negative debits ₣. Logged.',
+    `<div class="f"><label>Amount (±₣)</label><input id="ma-amt" type="number" step="0.01"></div>
+     <div class="f"><label>Memo</label><input id="ma-memo"></div>`,
+    `<button class="btn btn-line btn-sm" onclick="closeModal()">Cancel</button>
+     <button class="btn btn-wine btn-sm" onclick="(async()=>{await staffAdjustBalance('VNB','${id}',Number($('ma-amt').value||0),$('ma-memo').value);closeModal();})()">Post</button>`);
+}
+
+function subscribeVnb(){
+  if(!G.vnbAccountId) return;
+  subscribeAccount(G.vnbAccountId,a=>{V.account=a;if(a)G.accounts[a.id]=a;renderAccount();});
+  subscribeTransactions(G.vnbAccountId,t=>{V.txs=t;renderTxs();});
+}
+
+bootPage({
+  onFx(){ renderFixing(); },
+  async onReady(){
+    $('nav-user').textContent=G.username+(isStaffUser()?` · ${G.role.toUpperCase()}`:'');
+    $('team').innerHTML=staffCards('VNB');
+    renderFixing(); renderAccount(); subscribeNotices(); subscribeVnb();
+    if(isAdmin()){ $('admin-panel').classList.remove('hide'); await ensureFxSettings(); }
+    if(canManageBank('VNB')){
+      $('mgr-desk').classList.remove('hide');
+      G.unsubs.push(db.collection('accounts').where('bank','==','VNB').onSnapshot(s=>{V.all=s.docs.map(d=>({...d.data(),id:d.id})).sort((a,b)=>String(a.name).localeCompare(String(b.name)));renderMgr();},e=>console.warn(e)));
+    }
+    mountSwitcher('VNB');
+    await mountBankOwnershipSummary('VNB');
+  }
+});
+</script>
+</body>
+</html>
