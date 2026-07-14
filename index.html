@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Union of the United Republics Financial Network — Secure Portal</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#070b14;--card:#0e1626;--line:rgba(148,181,255,.12);--txt:#e5ecf7;--mut:#7d8ba3;--acc:#4f7cff;--modal-bg:#101826}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,sans-serif;min-height:100vh}
+h1,h2,h3,.disp{font-family:'Space Grotesk',sans-serif}
+a{color:inherit}
+.bgfx{position:fixed;inset:0;pointer-events:none;background:radial-gradient(900px 500px at 15% 0%,rgba(79,124,255,.14),transparent 60%),radial-gradient(700px 500px at 90% 100%,rgba(34,197,94,.08),transparent 60%)}
+/* ── Auth ── */
+#auth{position:relative;min-height:100vh;display:none;align-items:center;justify-content:center;padding:24px}
+.auth-card{width:100%;max-width:430px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:38px;box-shadow:0 40px 100px rgba(0,0,0,.55)}
+.auth-net{display:flex;align-items:center;gap:10px;margin-bottom:26px}
+.auth-net .dot{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,#4f7cff,#22c55e);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;color:#fff;font-family:'Space Grotesk'}
+.auth-net b{font-size:16px;font-family:'Space Grotesk'}
+.auth-net span{display:block;font-size:11px;color:var(--mut)}
+label{display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin:0 0 6px}
+input,select{width:100%;padding:12px 14px;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;color:var(--txt);font:500 14px Inter;outline:none;transition:.2s}
+input:focus{border-color:rgba(79,124,255,.6);box-shadow:0 0 0 3px rgba(79,124,255,.12)}
+.field{margin-bottom:16px}
+.btn{width:100%;padding:13px;border-radius:10px;border:0;font:700 14.5px 'Space Grotesk';cursor:pointer;transition:.15s}
+.btn-p{background:var(--acc);color:#fff}.btn-p:hover{background:#3d68e8}
+.btn-g{background:transparent;color:#9db4e8;border:1px solid var(--line);margin-top:10px}.btn-g:hover{border-color:rgba(79,124,255,.5)}
+.auth-err{display:none;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35);color:#fca5a5;font-size:13px;border-radius:9px;padding:10px 13px;margin-bottom:14px}
+.auth-foot{margin-top:22px;font-size:11px;color:var(--mut);text-align:center;line-height:1.6}
+.auth-links{display:flex;justify-content:center;margin-top:12px}.auth-link{border:0;background:transparent;color:#9db4e8;font:700 12px Inter;cursor:pointer;padding:5px 8px}.auth-link:hover{color:#fff;text-decoration:underline}.recovery-note{border:1px solid rgba(79,124,255,.25);background:rgba(79,124,255,.07);border-radius:10px;padding:11px 12px;color:#aebddd;font-size:12px;line-height:1.55;margin-bottom:14px}.password-rules{font-size:11px;color:var(--mut);line-height:1.55;margin:-5px 0 14px}.password-success{display:none;border:1px solid rgba(34,197,94,.34);background:rgba(34,197,94,.08);color:#a7f3d0;border-radius:9px;padding:10px 12px;font-size:12px;margin-bottom:13px}#password-change{position:relative;min-height:100vh;display:none;align-items:center;justify-content:center;padding:24px}
+.brandrow{display:flex;justify-content:center;gap:14px;margin-top:16px;opacity:.85}
+.brandrow img{height:26px;width:auto;filter:brightness(1.6) saturate(.8)}
+/* ── Hub ── */
+#hub{display:none;max-width:1140px;margin:0 auto;padding:0 22px 80px}
+.hub-top{display:flex;align-items:center;gap:14px;padding:20px 0;border-bottom:1px solid var(--line)}
+.hub-top .dot{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#4f7cff,#22c55e);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:10px;font-family:'Space Grotesk'}
+.hub-top b{font-family:'Space Grotesk';font-size:15px}
+.hub-user{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:12.5px;color:var(--mut)}
+.rolebadge{padding:3px 11px;border-radius:99px;font-size:10px;font-weight:800;letter-spacing:.08em;border:1px solid}
+.r-admin{color:#93b4ff;border-color:rgba(79,124,255,.5);background:rgba(79,124,255,.12)}
+.r-manager{color:#fcd34d;border-color:rgba(245,158,11,.5);background:rgba(245,158,11,.1)}
+.r-user{color:var(--mut);border-color:var(--line)}
+.out{background:none;border:1px solid var(--line);color:var(--mut);border-radius:8px;padding:5px 13px;font-size:12px;cursor:pointer}
+.out:hover{color:#f87171;border-color:rgba(239,68,68,.4)}
+.hero{padding:44px 0 8px}
+.hero h1{font-size:32px;letter-spacing:-.02em}
+.hero p{color:var(--mut);margin-top:6px;font-size:14.5px}
+.worth{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin:26px 0 8px}
+.wcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+.wcard .k{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--mut)}
+.wcard .v{font-family:'Space Grotesk';font-size:24px;font-weight:700;margin-top:6px}
+.wcard .s{font-size:11.5px;color:var(--mut);margin-top:3px}
+.sec-title{font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);margin:36px 0 16px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:16px}
+.tile{position:relative;display:block;text-decoration:none;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:24px;transition:.2s;overflow:hidden}
+.tile:hover{transform:translateY(-3px);border-color:rgba(148,181,255,.35);box-shadow:0 24px 60px rgba(0,0,0,.4)}
+.tile img{height:56px;width:auto;margin-bottom:14px}
+.tile .tn{font-family:'Space Grotesk';font-weight:700;font-size:17px}
+.tile .tt{font-size:12.5px;color:var(--mut);margin-top:4px;line-height:1.5}
+.tile .go{position:absolute;top:20px;right:20px;font-size:18px;color:var(--mut);transition:.2s}
+.tile:hover .go{color:var(--txt);transform:translateX(3px)}
+.tile .bal{margin-top:16px;font-family:'Space Grotesk';font-size:14px;font-weight:600;color:#a7f3d0}
+.tile .stripe{position:absolute;left:0;top:0;bottom:0;width:4px}
+.mgr-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.admin-launch{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}.admin-launch .tile{border-color:rgba(225,184,77,.3);background:radial-gradient(circle at 90% 0,rgba(225,184,77,.12),transparent 36%),linear-gradient(135deg,#17180f,var(--card) 52%)}.admin-mark{width:56px;height:56px;border-radius:15px;background:linear-gradient(135deg,#4f7cff,#e1b84d);display:grid;place-items:center;font:800 12px 'Space Grotesk';margin-bottom:14px;color:#fff}
+footer{margin-top:70px;border-top:1px solid var(--line);padding:26px 0;font-size:11.5px;color:var(--mut);line-height:1.7}
+@media(max-width:640px){.hero h1{font-size:24px}}
+</style>
+</head>
+<body>
+<div class="bgfx"></div>
+
+<!-- ═══ SIGN IN ═══ -->
+<div id="auth">
+  <div class="auth-card">
+    <div class="auth-net"><div class="dot">UUR</div><div><b>U.U.R. Financial Network</b><span>Union of the United Republics · Single sign-on · Banking · Markets · Gaming</span></div></div>
+    <div class="auth-err" id="auth-error"></div>
+    <div class="field"><label>Username</label><input id="auth-user" autocomplete="username" placeholder="yourname"></div>
+    <div class="field"><label>Password</label><input id="auth-pass" type="password" autocomplete="current-password" placeholder="••••••••"></div>
+    <button class="btn btn-p" onclick="doLogin()">Sign in to the Network</button>
+    <button class="btn btn-g" onclick="doRegister()">Create an account</button>
+    <div class="auth-links"><button class="auth-link" type="button" onclick="openPasswordResetRequest()">Forgot your password?</button></div>
+    <div class="auth-foot">One login grants access to all member institutions.<div class="brandrow">
+      <img src="assets/iub.png" alt="IUB"><img src="assets/merald.png" alt="Merald"><img src="assets/vnb.png" alt="VNB"><img src="assets/cse.png" alt="CSE"><img src="assets/oc-casino.png" alt="OC">
+    </div></div>
+  </div>
+</div>
+
+<!-- ═══ REQUIRED TEMPORARY-PASSWORD CHANGE ═══ -->
+<div id="password-change">
+  <div class="auth-card">
+    <div class="auth-net"><div class="dot">UUR</div><div><b>Create a permanent password</b><span>Your temporary password worked. Replace it before entering the Network.</span></div></div>
+    <div id="password-change-error" class="auth-err"></div>
+    <div id="password-change-success" class="password-success"></div>
+    <div class="recovery-note">For security, the temporary password cannot be used to enter any bank, market, casino, business, or administration page.</div>
+    <div class="field"><label>New password</label><input id="password-change-new" type="password" autocomplete="new-password" placeholder="At least 8 characters"></div>
+    <div class="field"><label>Confirm new password</label><input id="password-change-confirm" type="password" autocomplete="new-password" placeholder="Enter it again"></div>
+    <div class="password-rules">Use at least 8 characters with at least one letter and one number. Do not reuse the temporary password.</div>
+    <button class="btn btn-p" id="password-change-submit" onclick="completeRequiredPasswordChange()">Save permanent password</button>
+    <button class="btn btn-g" onclick="doLogout()">Sign out instead</button>
+  </div>
+</div>
+
+<!-- ═══ HUB ═══ -->
+<div id="hub">
+  <div class="hub-top">
+    <div class="dot">UUR</div><b>U.U.R. Financial Network · Union of the United Republics</b>
+    <div class="hub-user"><span id="hub-username"></span><span class="rolebadge r-user" id="hub-role">USER</span><button class="out" onclick="doLogout()">Sign out</button></div>
+  </div>
+
+  <div class="hero">
+    <h1 id="hello">Welcome back</h1>
+    <p>Your gateway to every institution in the Union. Choose where you're headed today.</p>
+  </div>
+
+  <div class="worth" id="worth"></div>
+
+  <div class="sec-title">Member Institutions</div>
+  <div class="tiles" id="tiles"></div>
+
+  <div class="sec-title">Finance Services</div>
+  <div class="admin-launch">
+    <a class="tile" href="services.html">
+      <div class="stripe" style="background:linear-gradient(#4f80ff,#25c47a)"></div>
+      <div class="admin-mark" style="background:linear-gradient(135deg,#4f80ff,#25c47a)">SERVICES</div><div class="go">→</div>
+      <div class="tn">Personal & Business Finance Center</div>
+      <div class="tt">Scheduled payments, savings goals, credit, taxes, insurance, business accounts, payroll, invoices, market programs, notifications, and statements.</div>
+      <div class="bal" style="color:#a5f3cc">Included with your network login</div>
+    </a>
+  </div>
+
+  <div class="sec-title">Your Relationship Team</div>
+  <div class="mgr-grid" id="mgrs"></div>
+
+  <div id="admin-section" style="display:none">
+    <div class="sec-title">Network Administration</div>
+    <div class="admin-launch">
+      <a class="tile" href="admin.html">
+        <div class="stripe" style="background:linear-gradient(#4f7cff,#e1b84d)"></div>
+        <div class="admin-mark">ADMIN</div><div class="go">→</div>
+        <div class="tn">U.U.R. Network Administration</div>
+        <div class="tt">Control member banks, users and roles, loans, bills, casino rules, the CSE, Valorian monetary policy, presence, and audit records.</div>
+        <div class="bal" style="color:#f6d77b">Administrator access only</div>
+      </a>
+      <a class="tile" href="advanced-admin.html">
+        <div class="stripe" style="background:linear-gradient(#9b7cff,#4f80ff)"></div>
+        <div class="admin-mark" style="background:linear-gradient(135deg,#9b7cff,#4f80ff)">PROGRAMS</div><div class="go">→</div>
+        <div class="tn">Programs & Economy Administration</div>
+        <div class="tt">Approval queues, businesses, migrations, dividends, votes, bonds, funds, economic estimates, casino tournaments, and institution staff roles.</div>
+        <div class="bal" style="color:#d6c9ff">Administrator access only</div>
+      </a>
+    </div>
+  </div>
+
+  <footer>
+    U.U.R. Financial Network · Central City, Union of the United Republics<br>
+    IUB is the designated central bank of the Union. VNB operates under the Valorian Banking Act of 1926 and issues the Valorian Frank (₣).
+    Deposits are role-play instruments and hold no real-world value. Play responsibly at OC Online Casino.
+  </footer>
+</div>
+
+<script src="shared.js"></script>
+<script>
+/* ── Auth actions ── */
+const cloudFunctions=firebase.functions();
+const requestPasswordResetFn=cloudFunctions.httpsCallable('requestPasswordReset');
+const completeTemporaryPasswordChangeFn=cloudFunctions.httpsCallable('completeTemporaryPasswordChange');
+function showAuthErr(m){const e=$('auth-error');e.textContent=m;e.style.display='block';}
+function showPasswordChangeError(m){const e=$('password-change-error');e.textContent=m;e.style.display='block';}
+function showForcedPasswordChange(){
+  $('auth').style.display='none'; $('hub').style.display='none'; $('password-change').style.display='flex';
+  setTimeout(()=>$('password-change-new')?.focus(),50);
+}
+function openPasswordResetRequest(){
+  showModal('Request password help','A request will be sent privately to Minekid123. The old password cannot be viewed.',
+    `<div class="recovery-note">Enter the exact username used on the U.U.R. Financial Network. For privacy, the result is the same whether or not the username exists.</div><div class="field"><label>Username</label><input id="reset-request-username" autocomplete="username" placeholder="yourname"></div><div id="reset-request-message" style="display:none" class="password-success"></div>`,
+    `<button class="btn btn-g" type="button" onclick="closeModal()">Cancel</button><button class="btn btn-p" id="reset-request-submit" type="button" onclick="submitPasswordResetRequest()">Send request</button>`);
+  setTimeout(()=>$('reset-request-username')?.focus(),50);
+}
+async function submitPasswordResetRequest(){
+  const input=$('reset-request-username'),button=$('reset-request-submit'),message=$('reset-request-message');
+  const username=String(input?.value||'').trim().toLowerCase();
+  const validation=validateUN(username); if(validation)return toast(validation,false);
+  button.disabled=true;button.textContent='Sending…';
+  try{
+    await requestPasswordResetFn({username});
+    message.textContent='Request received. Contact Minekid123 privately. If the username is valid, a temporary password can be issued from the Head Administrator console.';
+    message.style.display='block';input.disabled=true;button.textContent='Request sent';
+  }catch(err){
+    console.error(err);toast('The secure reset service is unavailable. Make sure the Firebase Function has been deployed.',false);button.disabled=false;button.textContent='Send request';
+  }
+}
+async function completeRequiredPasswordChange(){
+  const pass=$('password-change-new').value||'',confirmPass=$('password-change-confirm').value||'',button=$('password-change-submit');
+  $('password-change-error').style.display='none';
+  if(pass.length<8||!/[A-Za-z]/.test(pass)||!/[0-9]/.test(pass))return showPasswordChangeError('Use at least 8 characters with at least one letter and one number.');
+  if(pass!==confirmPass)return showPasswordChangeError('The passwords do not match.');
+  button.disabled=true;button.textContent='Saving…';
+  try{
+    await completeTemporaryPasswordChangeFn({newPassword:pass});
+    const ok=$('password-change-success');ok.textContent='Password changed. Sign in again using your new password.';ok.style.display='block';
+    $('password-change-new').disabled=true;$('password-change-confirm').disabled=true;button.textContent='Password saved';
+    setTimeout(async()=>{await auth.signOut();location.href='index.html?passwordChanged=1';},1200);
+  }catch(err){
+    console.error(err);showPasswordChangeError(err?.message||'Could not change the password.');button.disabled=false;button.textContent='Save permanent password';
+  }
+}
+function validateUN(u){ if(!u) return 'Enter a username.'; if(!/^[a-z0-9_]{3,20}$/.test(u)) return 'Username must be 3–20 letters, numbers or _.'; return ''; }
+async function doLogin(){
+  const u=($('auth-user').value||'').trim().toLowerCase(), p=$('auth-pass').value||'';
+  const e=validateUN(u); if(e) return showAuthErr(e);
+  if(!p) return showAuthErr('Enter your password.');
+  try{ await auth.signInWithEmailAndPassword(u+FAKE_DOMAIN,p); }
+  catch(err){ const c=err.code;
+    showAuthErr(c==='auth/user-not-found'||c==='auth/invalid-credential'?'Username not found. Check spelling or create an account.':c==='auth/wrong-password'?'Wrong password.':c==='auth/too-many-requests'?'Too many attempts — wait a moment.':err.message||'Sign in failed.'); }
+}
+async function doRegister(){
+  const u=($('auth-user').value||'').trim().toLowerCase(), p=$('auth-pass').value||'';
+  const e=validateUN(u); if(e) return showAuthErr(e);
+  if(!p||p.length<6) return showAuthErr('Password must be at least 6 characters.');
+  try{
+    const cred=await auth.createUserWithEmailAndPassword(u+FAKE_DOMAIN,p);
+    const iubRef=db.collection('accounts').doc(), merRef=db.collection('accounts').doc(), vnbRef=db.collection('accounts').doc();
+    const batch=db.batch();
+    batch.set(db.collection('users').doc(cred.user.uid),{username:u,role:'user',accountId:iubRef.id,iubAccountId:iubRef.id,meraldAccountId:merRef.id,vnbAccountId:vnbRef.id,createdAt:now8601()});
+    batch.set(iubRef,{name:u,bank:'IUB',currency:'EM',ownerUid:cred.user.uid,ownerUsername:u,balance:0,status:'active',accountType:'checking',interestApr:0,createdAt:now8601()});
+    batch.set(merRef,{name:`${u} MERALD`,bank:'MERALD',currency:'EM',ownerUid:cred.user.uid,ownerUsername:u,balance:0,status:'active',accountType:'checking',interestApr:1.25,createdAt:now8601()});
+    batch.set(vnbRef,{name:`${u} VNB`,bank:'VNB',currency:'VF',ownerUid:cred.user.uid,ownerUsername:u,balance:0,status:'active',accountType:'checking',interestApr:0,createdAt:now8601()});
+    await batch.commit();
+    toast('Welcome to the Network, '+u+'!');
+  }catch(err){ showAuthErr(err.code==='auth/email-already-in-use'?'That username is already taken.':err.message||'Registration failed.'); }
+}
+['auth-user','auth-pass'].forEach(id=>document.addEventListener('DOMContentLoaded',()=>$(id)?.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();})));
+
+/* ── Hub render ── */
+function renderHub(){
+  $('auth').style.display='none'; $('hub').style.display='block';
+  $('hub-username').textContent=G.username;
+  const rb=$('hub-role'); rb.textContent=G.role.toUpperCase(); rb.className='rolebadge r-'+G.role;
+  const hr=new Date().getHours();
+  $('hello').textContent=(hr<12?'Good morning':hr<18?'Good afternoon':'Good evening')+', '+G.username;
+
+  const acs=Object.values(G.accounts);
+  const iub=acs.filter(a=>bankName(a)==='IUB'), mer=acs.filter(a=>bankName(a)==='MERALD'), vnb=acs.filter(a=>bankName(a)==='VNB');
+  const sum=l=>l.reduce((s,a)=>s+Number(a.balance||0),0);
+  const total=acs.reduce((s,a)=>s+emerulEquivalent(a),0);
+  $('worth').innerHTML=`
+    <div class="wcard"><div class="k">Net position (Emerul equivalent)</div><div class="v">${fmt(total)}</div><div class="s">Across ${acs.length} account${acs.length===1?'':'s'} · ₣ converted at ₣${fxRate().toFixed(2)} per EM</div></div>
+    <div class="wcard"><div class="k">IUB</div><div class="v">${fmt(sum(iub))}</div><div class="s">Central bank deposits</div></div>
+    <div class="wcard"><div class="k">MERALD</div><div class="v">${fmt(sum(mer))}</div><div class="s">Everyday + vaults</div></div>
+    <div class="wcard"><div class="k">VNB</div><div class="v">${fmtVF(sum(vnb))}</div><div class="s">Valorian Franks</div></div>`;
+
+  const balFor=b=> b==='IUB'?fmt(sum(iub)) : b==='MERALD'?fmt(sum(mer)) : b==='VNB'?fmtVF(sum(vnb)) : '';
+  const desc={IUB:'Checking, savings, certificates, loans and interbank wires from the Union\u2019s central bank.',
+    MERALD:'The neobank. Vaults, savings goals, Transfer Guard and instant insights.',
+    VNB:'Valorian Frank (₣) accounts and the official foreign-exchange desk of Valoria.',
+    CSE:'Live quotes, portfolios, watchlists and order execution on the Union\u2019s only exchange.',
+    OC:'Blackjack, roulette, crash, mines and more — funded straight from your bank.'};
+  $('tiles').innerHTML=Object.values(BRANDS).map(b=>`
+    <a class="tile" href="${b.page}">
+      <div class="stripe" style="background:${b.color}"></div>
+      <img src="${b.logo}" alt="${esc(b.name)}"><div class="go">→</div>
+      <div class="tn">${esc(b.name)}</div>
+      <div class="tt">${esc(desc[b.short]||b.tag)}</div>
+      ${balFor(b.short)?`<div class="bal">${balFor(b.short)}</div>`:''}
+    </a>`).join('');
+
+  $('admin-section').style.display=isAdmin()?'block':'none';
+
+  $('mgrs').innerHTML=['IUB','MERALD','VNB','CSE','OC'].map(br=>{
+    const m=yourManager(br); if(!m) return '';
+    const initials=m.n.split(' ').map(w=>w[0]).filter(c=>/[A-Z]/.test(c)).slice(0,2).join('');
+    return `<div class="staff-card"><div class="staff-avatar" style="background:${BRANDS[br].color}">${initials}</div>
+      <div><div class="staff-name">${esc(m.n)}</div><div class="staff-title">${esc(m.t)} · ${br}</div><div class="staff-bio">${esc(m.b)}</div></div></div>`;
+  }).join('');
+}
+
+bootPage({
+  requireAuth:false,
+  onSignedOut(){ $('auth').style.display='flex'; $('hub').style.display='none'; $('password-change').style.display='none';
+    if(new URLSearchParams(location.search).get('passwordChanged')==='1')toast('Password changed successfully. Sign in with the new password.'); },
+  onFx(){ if(G.user && G.profile?.mustChangePassword!==true) renderHub(); },
+  async onReady(profile){ if(profile?.mustChangePassword===true){showForcedPasswordChange();return;} renderHub(); }
+});
+</script>
+</body>
+</html>
