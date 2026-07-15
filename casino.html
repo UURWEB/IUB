@@ -266,6 +266,24 @@ footer b{color:var(--gold)}
       <div><label>Crash edge</label><input id="ad-crashe" type="number" step="0.005"></div>
       <div><label>Wheel edge</label><input id="ad-wheele" type="number" step="0.005"></div>
     </div>
+    <div class="arow">
+      <div><label>House treasury</label><select id="ad-house"></select></div>
+      <div><label>Government tax account</label><select id="ad-taxacct"></select></div>
+      <div><label>Reserve floor</label><input id="ad-reserve" type="number" step="0.01"></div>
+      <div><label>Daily house loss limit</label><input id="ad-losslimit" type="number" step="0.01"></div>
+    </div>
+    <div class="arow">
+      <div><label>Max payout</label><input id="ad-maxpayout" type="number" step="0.01"></div>
+      <div><label>Max payout % treasury</label><input id="ad-maxpct" type="number" step="0.1"></div>
+      <div><label>Wager tax %</label><input id="ad-wagertax" type="number" step="0.1"></div>
+      <div><label>Winnings tax %</label><input id="ad-wintax" type="number" step="0.1"></div>
+    </div>
+    <div class="arow">
+      <div><label>GGR tax %</label><input id="ad-ggrtax" type="number" step="0.1"></div>
+      <div><label>Risk response</label><select id="ad-risk"><option value="cap">Cap unsafe payouts</option><option value="reject">Reject unsafe payouts</option></select></div>
+      <div><label>Require treasury</label><select id="ad-require"><option value="1">Yes</option><option value="0">Legacy mode</option></select></div>
+      <div><label>Auto-close at reserve</label><select id="ad-autoclose"><option value="1">Yes</option><option value="0">No</option></select></div>
+    </div>
     <button class="btn gold" onclick="admSave()">Save casino settings</button>
   </div>
 </div>
@@ -278,7 +296,7 @@ footer b{color:var(--gold)}
 const DEFAULT_CASINO_SETTINGS = {
   enabled:true, minBet:1, maxBet:1000, cooldownSeconds:12, dailyPlayLimit:50,
   coinWinRate:0.42, coinPayout:1.80, diceWinRate:0.32, dicePayout:2.35, slotsWinRate:0.18, slotsPayout:4.00,
-  crashEdge:0.04, wheelEdge:0.05,
+  crashEdge:0.04, wheelEdge:0.05, houseAccountId:'', governmentTaxAccountId:'', reserveFloor:0, maxPayoutAmount:100000, maxPayoutPctTreasury:10, maxDailyHouseLoss:1000000, wagerTaxPct:10, winningsTaxPct:35, ggrTaxPct:30, riskMode:'cap', autoCloseOnReserve:true, requireHouseTreasury:true,
 };
 const C = { settings:null, accounts:[], accountId:null, player:null, busy:false, loyalty:{}, tournaments:[], entries:[] };
 
@@ -295,45 +313,31 @@ function playsUsedToday(){
   return String(p.dayKey||'')===day?Number(p.playsToday||0):0;
 }
 
-/* One settlement transaction for every game — identical shape to legacy casinoPlay. */
+/* Every game settles against a real house treasury and, when configured, a U.U.R. government tax account. */
 async function settle({game, gameName, bet, win, totalReturn, extra={}, resultEl}){
-  const s=casinoSettings(), accountId=C.accountId;
-  const net=Math.round((totalReturn-bet)*100)/100;
-  const accountRef=db.collection('accounts').doc(accountId);
-  const playerRef=db.collection('casinoPlayers').doc(G.user.uid);
-  const playRef=db.collection('casinoPlays').doc();
-  const txRef=db.collection('transactions').doc();
+  const s=casinoSettings(), accountId=C.accountId, originalTotalReturn=Math.max(0,Number(totalReturn||0));
+  const accountRef=db.collection('accounts').doc(accountId),playerRef=db.collection('casinoPlayers').doc(G.user.uid),playRef=db.collection('casinoPlays').doc(),txRef=db.collection('transactions').doc(),settingsRef=db.collection('casino').doc('settings'),day=centralCityDayKey(),dailyRef=db.collection('casinoHouseDaily').doc(day);
+  const houseRef=s.houseAccountId?db.collection('accounts').doc(s.houseAccountId):null,taxRef=s.governmentTaxAccountId?db.collection('accounts').doc(s.governmentTaxAccountId):null;
+  if(s.requireHouseTreasury&&!houseRef)throw new Error('Casino house treasury is not configured. An administrator must configure it.');if((Number(s.wagerTaxPct||0)+Number(s.winningsTaxPct||0)+Number(s.ggrTaxPct||0))>0&&!taxRef)throw new Error('Casino taxes are enabled, but the government tax account is not configured.');if(houseRef&&taxRef&&s.houseAccountId===s.governmentTaxAccountId)throw new Error('Casino treasury and government tax account must be different.');
+  let result={};
   await db.runTransaction(async tx=>{
-    const [as,ps]=await Promise.all([tx.get(accountRef),tx.get(playerRef)]);
-    if(!as.exists)throw new Error('Bank account not found.');
-    const a={...as.data(),id:as.id};
-    if(a.ownerUid!==G.user.uid&&!isAdmin())throw new Error('Choose your own bank account.');
-    if(accountStatus(a)!=='active'&&!isAdmin())throw new Error('This bank account is restricted.');
-    if(Number(a.balance||0)<bet)throw new Error('Insufficient balance for this wager.');
-    const p=ps.exists?ps.data():{}, day=centralCityDayKey();
-    const used=String(p.dayKey||'')===day?Number(p.playsToday||0):0;
-    const last=dateFromAny(p.lastPlayAt).getTime();
-    const wait=Math.max(0,Number(s.cooldownSeconds||0)*1000-(Date.now()-last));
-    if(!isAdmin()&&used>=Number(s.dailyPlayLimit||50))throw new Error('Daily casino play limit reached.');
-    if(!isAdmin()&&wait>0)throw new Error(`Wait ${Math.ceil(wait/1000)} seconds before playing again.`);
-    const createdAt=now8601();
-    tx.update(accountRef,{balance:FV.increment(net),updatedAt:createdAt,lastCasinoPlayAt:createdAt});
-    const loyaltyRate=Math.max(0,Number(C.loyalty.pointsPerEmerul||1));
-    tx.set(playerRef,{ownerUid:G.user.uid,ownerUsername:G.username,dayKey:day,playsToday:used+1,lastPlayAt:createdAt,
-      totalWagered:FV.increment(bet),totalReturned:FV.increment(totalReturn),loyaltyPoints:FV.increment(Math.floor(bet*loyaltyRate)),
-      wins:FV.increment(win?1:0),losses:FV.increment(win?0:1)},{merge:true});
-    tx.set(playRef,{ownerUid:G.user.uid,ownerUsername:G.username,accountId,bank:bankName(a),game,gameName,bet,win,totalReturn,net,createdAt,...extra});
-    tx.set(txRef,{accountId,ownerUid:a.ownerUid,ownerUsername:a.ownerUsername,bank:bankName(a),
-      type:win?'casino_win':'casino_loss',amount:Math.abs(net),
-      description:win?`${gameName} win — returned ${fmt(totalReturn)}`:`${gameName} loss`,
-      casinoPlayId:playRef.id,createdAt,createdBy:G.user.uid});
+    const reads=[tx.get(accountRef),tx.get(playerRef),tx.get(dailyRef)];if(houseRef)reads.push(tx.get(houseRef));if(taxRef)reads.push(tx.get(taxRef));const snaps=await Promise.all(reads),as=snaps[0],ps=snaps[1],ds=snaps[2];
+    if(!as.exists)throw new Error('Bank account not found.');const a={...as.data(),id:as.id};if(a.ownerUid!==G.user.uid&&!isAdmin()&&!(typeof canUseBusinessAccount==='function'&&canUseBusinessAccount(a,'banking')))throw new Error('Choose an account you are authorized to use.');if(accountStatus(a)!=='active'&&!isAdmin())throw new Error('This bank account is restricted.');
+    const wagerTax=Math.round(bet*Math.max(0,Number(s.wagerTaxPct||0))/100*100)/100;if(Number(a.balance||0)<bet+wagerTax)throw new Error(`You need ${fmt(bet+wagerTax)} including wager tax.`);
+    const p=ps.exists?ps.data():{},used=String(p.dayKey||'')===day?Number(p.playsToday||0):0,last=dateFromAny(p.lastPlayAt).getTime(),wait=Math.max(0,Number(s.cooldownSeconds||0)*1000-(Date.now()-last));if(!isAdmin()&&used>=Number(s.dailyPlayLimit||50))throw new Error('Daily casino play limit reached.');if(!isAdmin()&&wait>0)throw new Error(`Wait ${Math.ceil(wait/1000)} seconds before playing again.`);
+    let adjustedReturn=originalTotalReturn,payoutCapped=false,houseSnap=null,taxSnap=null,idx=3;if(houseRef){houseSnap=snaps[idx++];if(!houseSnap.exists)throw new Error('Casino treasury account is missing.');const hb=Number(houseSnap.data().balance||0),floor=Math.max(0,Number(s.reserveFloor||0)),available=Math.max(0,hb-floor),pctCap=Math.max(0,hb*Math.max(0,Number(s.maxPayoutPctTreasury||100))/100),amountCap=Number(s.maxPayoutAmount||0)>0?Number(s.maxPayoutAmount):Infinity,daily=ds.exists?ds.data():{},remainingDaily=Number(s.maxDailyHouseLoss||0)>0?Math.max(0,Number(s.maxDailyHouseLoss)-Math.max(0,-Number(daily.houseNet||0))):Infinity,safeProfit=Math.max(0,Math.min(available,pctCap||available,amountCap,remainingDaily)),requestedProfit=Math.max(0,adjustedReturn-bet);if(requestedProfit>safeProfit){if(s.riskMode==='reject')throw new Error('This payout would exceed the casino reserve or daily-loss limit.');adjustedReturn=Math.round((bet+safeProfit)*100)/100;payoutCapped=true;}}
+    if(taxRef){taxSnap=snaps[idx++];if(!taxSnap.exists)throw new Error('Government casino-tax account is missing.');}
+    const grossNet=Math.round((adjustedReturn-bet)*100)/100,winningsTax=Math.round(Math.max(0,grossNet)*Math.max(0,Number(s.winningsTaxPct||0))/100*100)/100,houseGamingDelta=-grossNet,ggrTax=Math.round(Math.max(0,houseGamingDelta)*Math.max(0,Number(s.ggrTaxPct||0))/100*100)/100,totalTax=Math.round((wagerTax+winningsTax+ggrTax)*100)/100,playerDelta=Math.round((grossNet-wagerTax-winningsTax)*100)/100,houseDelta=Math.round((houseGamingDelta-ggrTax)*100)/100,createdAt=now8601();
+    if(houseRef&&Number(houseSnap.data().balance||0)+houseDelta<Math.max(0,Number(s.reserveFloor||0))-.005)throw new Error('Casino reserve protection blocked this wager.');
+    tx.update(accountRef,{balance:FV.increment(playerDelta),updatedAt:createdAt,lastCasinoPlayAt:createdAt});if(houseRef)tx.update(houseRef,{balance:FV.increment(houseDelta),updatedAt:createdAt,lastCasinoPlayId:playRef.id});if(taxRef&&totalTax)tx.update(taxRef,{balance:FV.increment(totalTax),updatedAt:createdAt,lastCasinoPlayId:playRef.id});
+    const loyaltyRate=Math.max(0,Number(C.loyalty.pointsPerEmerul||1));tx.set(playerRef,{ownerUid:G.user.uid,ownerUsername:G.username,dayKey:day,playsToday:used+1,lastPlayAt:createdAt,totalWagered:FV.increment(bet),totalReturned:FV.increment(adjustedReturn),loyaltyPoints:FV.increment(Math.floor(bet*loyaltyRate)),wins:FV.increment(win?1:0),losses:FV.increment(win?0:1)},{merge:true});
+    tx.set(playRef,{ownerUid:G.user.uid,ownerUsername:G.username,accountId,bank:bankName(a),game,gameName,bet,win,totalReturn:adjustedReturn,originalTotalReturn,grossNet,net:playerDelta,houseDelta,wagerTax,winningsTax,ggrTax,totalTax,houseAccountId:s.houseAccountId||null,taxAccountId:s.governmentTaxAccountId||null,payoutCapped,createdAt,...extra});
+    tx.set(txRef,{accountId,ownerUid:a.ownerUid,ownerUsername:a.ownerUsername,bank:bankName(a),type:win?'casino_win':'casino_loss',amount:Math.abs(playerDelta),description:win?`${gameName} win · after-tax return ${fmt(adjustedReturn-winningsTax-wagerTax)}`:`${gameName} loss · wager tax ${fmt(wagerTax)}`,casinoPlayId:playRef.id,createdAt,createdBy:G.user.uid});
+    if(houseRef)tx.set(db.collection('transactions').doc(),{accountId:s.houseAccountId,bank:'OC',type:houseDelta>=0?'casino_house_revenue':'casino_house_payout',amount:Math.abs(houseDelta),description:`${gameName} house settlement`,casinoPlayId:playRef.id,createdAt,createdBy:G.user.uid});if(taxRef&&totalTax)tx.set(db.collection('transactions').doc(),{accountId:s.governmentTaxAccountId,bank:'UUR',type:'casino_tax_revenue',amount:totalTax,description:`Casino taxes · ${gameName}`,casinoPlayId:playRef.id,createdAt,createdBy:G.user.uid});
+    const prev=ds.exists?ds.data():{},nextHouseNet=Number(prev.houseNet||0)+houseDelta;tx.set(dailyRef,{dayKey:day,wagered:FV.increment(bet),returned:FV.increment(adjustedReturn),houseNet:FV.increment(houseDelta),taxes:FV.increment(totalTax),plays:FV.increment(1),lastCasinoPlayId:playRef.id,updatedAt:createdAt},{merge:true});if(s.autoCloseOnReserve&&houseRef&&Number(houseSnap.data().balance||0)+houseDelta<=Math.max(0,Number(s.reserveFloor||0)))tx.set(settingsRef,{enabled:false,autoClosedAt:createdAt,autoCloseReason:'reserve_floor',updatedAt:createdAt},{merge:true});result={adjustedReturn,grossNet,playerDelta,houseDelta,totalTax,wagerTax,winningsTax,ggrTax,payoutCapped};
   });
-  if(resultEl){
-    const el=$(resultEl);
-    el.className='result '+(win?'win':'loss');
-    el.textContent=win?`WIN — returned ${fmt(totalReturn)} (net +${fmt(net)})`:`LOSS — ${fmt(bet)} to the house`;
-  }
-  toast(win?`${gameName}: +${fmt(net)}`:`${gameName}: −${fmt(bet)}`,win);
+  if(resultEl){const el=$(resultEl);el.className='result '+(win?'win':'loss');el.textContent=win?`WIN — after taxes ${fmt(Math.max(0,result.adjustedReturn-result.winningsTax-result.wagerTax))} (net ${result.playerDelta>=0?'+':''}${fmt(result.playerDelta)})${result.payoutCapped?' · payout capped by reserve rules':''}`:`LOSS — ${fmt(Math.abs(result.playerDelta))} including taxes`;}
+  toast(result.playerDelta>=0?`${gameName}: +${fmt(result.playerDelta)}`:`${gameName}: −${fmt(Math.abs(result.playerDelta))}`,result.playerDelta>=0);
 }
 function preflight(resultEl){
   const s=casinoSettings(), bet=betAmount(), a=currentAccount();
@@ -343,7 +347,7 @@ function preflight(resultEl){
   if(!a){toast('Choose a valid bank account.',false);return null;}
   if(accountCurrency(a)==='VF'){toast('The casino takes U.U.R. Emerul only. Use IUB or MERALD.',false);return null;}
   if(bet<Number(s.minBet)||bet>Number(s.maxBet)){toast(`Bet must be between ${fmt(s.minBet)} and ${fmt(s.maxBet)}.`,false);return null;}
-  if(Number(a.balance||0)<bet){toast('Insufficient balance for this wager.',false);return null;}
+  const wagerTax=Math.round(bet*Math.max(0,Number(s.wagerTaxPct||0))/100*100)/100;if(s.requireHouseTreasury&&!s.houseAccountId){toast('Casino treasury is not configured. The casino is temporarily unavailable.',false);return null;}if((Number(s.wagerTaxPct||0)+Number(s.winningsTaxPct||0)+Number(s.ggrTaxPct||0))>0&&!s.governmentTaxAccountId){toast('Casino tax account is not configured.',false);return null;}if(Number(a.balance||0)<bet+wagerTax){toast(`Insufficient balance. This wager requires ${fmt(bet+wagerTax)} including tax.`,false);return null;}
   return {s,bet,a};
 }
 async function guard(fn){ C.busy=true; try{ await fn(); }catch(err){ console.error(err); toast(err.message||'Play failed.',false);}finally{C.busy=false;} }
@@ -657,22 +661,15 @@ function admFill(){
   $('ad-cool').value=s.cooldownSeconds;$('ad-daily').value=s.dailyPlayLimit;
   $('ad-coinr').value=s.coinWinRate;$('ad-coinp').value=s.coinPayout;
   $('ad-dicer').value=s.diceWinRate;$('ad-dicep').value=s.dicePayout;
-  $('ad-slotsr').value=s.slotsWinRate;$('ad-slotsp').value=s.slotsPayout;
+  $('ad-slotsr').value=s.slotsWinRate;$('ad-slotsp').value=s.slotsPayout;$('ad-reserve').value=s.reserveFloor||0;$('ad-losslimit').value=s.maxDailyHouseLoss||1000000;$('ad-maxpayout').value=s.maxPayoutAmount||100000;$('ad-maxpct').value=s.maxPayoutPctTreasury||10;$('ad-wagertax').value=s.wagerTaxPct||0;$('ad-wintax').value=s.winningsTaxPct||0;$('ad-ggrtax').value=s.ggrTaxPct||0;$('ad-risk').value=s.riskMode||'cap';$('ad-require').value=s.requireHouseTreasury===false?'0':'1';$('ad-autoclose').value=s.autoCloseOnReserve===false?'0':'1';const em=C.accounts.filter(a=>accountCurrency(a)==='EM'),opt='<option value="">— choose account —</option>'+em.map(a=>`<option value="${a.id}">${esc(a.name||a.ownerUsername||a.id)} · ${fmt(a.balance)}</option>`).join('');$('ad-house').innerHTML=opt;$('ad-taxacct').innerHTML=opt;$('ad-house').value=s.houseAccountId||'';$('ad-taxacct').value=s.governmentTaxAccountId||'';
   $('ad-crashe').value=s.crashEdge??0.04;$('ad-wheele').value=s.wheelEdge??0.05;
 }
 async function admSave(){
   if(!canManageBank('OC'))return toast('Only casino staff can save these settings.',false);
-  await db.collection('casino').doc('settings').set({
-    enabled:$('ad-enabled').value==='1',
-    minBet:Number($('ad-min').value)||1,maxBet:Number($('ad-max').value)||1000,
-    cooldownSeconds:Number($('ad-cool').value)||12,dailyPlayLimit:Number($('ad-daily').value)||50,
-    coinWinRate:clamp($('ad-coinr').value,0,1),coinPayout:Number($('ad-coinp').value)||1.8,
-    diceWinRate:clamp($('ad-dicer').value,0,1),dicePayout:Number($('ad-dicep').value)||2.35,
-    slotsWinRate:clamp($('ad-slotsr').value,0,1),slotsPayout:Number($('ad-slotsp').value)||4,
-    crashEdge:clamp($('ad-crashe').value,0,0.5),wheelEdge:clamp($('ad-wheele').value,0,0.5),
-    updatedAt:now8601(),updatedBy:G.user.uid
-  },{merge:true});
-  await audit('casino.saveSettings',{});toast('Casino settings saved.');
+  const houseAccountId=$('ad-house').value,governmentTaxAccountId=$('ad-taxacct').value;
+  if($('ad-require').value==='1'&&!houseAccountId)return toast('Choose a house treasury first.',false);if(houseAccountId&&governmentTaxAccountId&&houseAccountId===governmentTaxAccountId)return toast('House and tax accounts must be different.',false);if((Number($('ad-wagertax').value||0)+Number($('ad-wintax').value||0)+Number($('ad-ggrtax').value||0))>0&&!governmentTaxAccountId)return toast('Choose a government tax account when taxes are enabled.',false);
+  const data={enabled:$('ad-enabled').value==='1',minBet:Number($('ad-min').value)||1,maxBet:Number($('ad-max').value)||1000,cooldownSeconds:Number($('ad-cool').value)||12,dailyPlayLimit:Number($('ad-daily').value)||50,coinWinRate:clamp($('ad-coinr').value,0,1),coinPayout:Number($('ad-coinp').value)||1.8,diceWinRate:clamp($('ad-dicer').value,0,1),dicePayout:Number($('ad-dicep').value)||2.35,slotsWinRate:clamp($('ad-slotsr').value,0,1),slotsPayout:Number($('ad-slotsp').value)||4,crashEdge:clamp($('ad-crashe').value,0,0.5),wheelEdge:clamp($('ad-wheele').value,0,0.5),houseAccountId,governmentTaxAccountId,reserveFloor:Math.max(0,Number($('ad-reserve').value||0)),maxDailyHouseLoss:Math.max(0,Number($('ad-losslimit').value||0)),maxPayoutAmount:Math.max(0,Number($('ad-maxpayout').value||0)),maxPayoutPctTreasury:clamp($('ad-maxpct').value,0,100),wagerTaxPct:clamp($('ad-wagertax').value,0,100),winningsTaxPct:clamp($('ad-wintax').value,0,100),ggrTaxPct:clamp($('ad-ggrtax').value,0,100),riskMode:$('ad-risk').value,requireHouseTreasury:$('ad-require').value==='1',autoCloseOnReserve:$('ad-autoclose').value==='1',updatedAt:now8601(),updatedBy:G.user.uid};
+  const batch=db.batch();batch.set(db.collection('casino').doc('settings'),data,{merge:true});if(houseAccountId)batch.set(db.collection('accounts').doc(houseAccountId),{systemRole:'casino_house',updatedAt:now8601()},{merge:true});if(governmentTaxAccountId)batch.set(db.collection('accounts').doc(governmentTaxAccountId),{systemRole:'government_tax',updatedAt:now8601()},{merge:true});await batch.commit();await audit('casino.saveSettings',{houseAccountId,governmentTaxAccountId,reserveFloor:data.reserveFloor,maxDailyHouseLoss:data.maxDailyHouseLoss});toast('Casino settings saved.');
 }
 async function ensureCasinoSettings(){
   if(!canManageBank('OC'))return;

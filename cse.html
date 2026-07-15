@@ -598,11 +598,12 @@ async function placeOrder(side){
         trx.set(tradeRef,{...commonTrade,type:'buy',buyerUid:G.user.uid,buyerUsername:identity.ownerName,lockedUntil:holdUntil});
       }else{
         if(!pos||Number(pos.shares||0)<shares)throw new Error(`You only own ${pos?pos.shares:0} shares in this selected portfolio.`);
+        const costBasis=Math.round(Number(pos.avgPrice||0)*shares*100)/100,realizedGain=Math.round((quote.total-costBasis)*100)/100;
         trx.update(accRef,{balance:FV.increment(quote.total),...tradeStateUpdateFields(account)});
-        trx.set(txRef,{...commonTx,type:'stock_sale',amount:quote.total,description:`Sold ${shares} ${ticker} @ ${fmt(quote.execPrice)}; fee ${fmt(quote.fee)}`});
+        trx.set(txRef,{...commonTx,type:'stock_sale',amount:quote.total,costBasis,realizedGain,description:`Sold ${shares} ${ticker} @ ${fmt(quote.execPrice)}; fee ${fmt(quote.fee)}; realized ${realizedGain>=0?'+':''}${fmt(realizedGain)}`});
         if(isAdmin()&&s.issuerAccountId){trx.update(db.collection('accounts').doc(s.issuerAccountId),{balance:FV.increment(-quote.gross)});trx.set(issuerTxRef,{accountId:s.issuerAccountId,type:'stock_purchase',amount:quote.gross,description:`Stock buyback: ${shares} ${ticker} from ${identity.ownerName}`,createdAt:now8601(),createdBy:G.user.uid});}
         const next=Number(pos.shares||0)-shares;if(next<=0)trx.delete(posRef);else trx.update(posRef,{...ownerFields,shares:next,accountId:acctId,lastSellAt:now8601(),updatedAt:now8601()});
-        trx.set(tradeRef,{...commonTrade,type:'sell',sellerUid:G.user.uid,sellerUsername:identity.ownerName});
+        trx.set(tradeRef,{...commonTrade,type:'sell',sellerUid:G.user.uid,sellerUsername:identity.ownerName,costBasis,realizedGain});
       }
       trx.update(stockRef,stockTradeUpdateFields(ticker,side,shares,impact,nextOutstanding));
     });
