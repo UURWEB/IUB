@@ -255,9 +255,9 @@ async function issueTaxBill(uid){
   const amount=promptTaxAmount(e);if(amount===null)return;if(!amount)return toast('Enter a valid amount.',false);
   const acct=biggestAccount(uid);if(!acct)return toast('This member has no active Emerul account to bill.',false);
   const due=new Date(Date.now()+7*86400000).toISOString().slice(0,10);
-  const batch=db.batch();
-  batch.set(db.collection('bills').doc(),{accountId:acct.id,ownerUid:uid,ownerUsername:e.uname||uName(uid),name:`U.U.R. income tax assessment`,category:'tax',amount,dueDate:due,status:'outstanding',issuedBy:G.user.uid,issuedByUsername:G.username,createdAt:now8601()});
-  batch.set(db.collection('taxAssessments').doc(),{ownerUid:uid,ownerUsername:e.uname||uName(uid),basisIncome:e.income,amount,method:'bill',status:'issued',dueDate:due,createdAt:now8601(),createdBy:G.user.uid});
+  const batch=db.batch(),billRef=db.collection('bills').doc(),assessmentRef=db.collection('taxAssessments').doc();
+  batch.set(billRef,{accountId:acct.id,ownerUid:uid,ownerUsername:e.uname||uName(uid),name:`U.U.R. income tax assessment`,category:'tax',amount,dueDate:due,status:'outstanding',assessmentId:assessmentRef.id,issuedBy:G.user.uid,issuedByUsername:G.username,createdAt:now8601()});
+  batch.set(assessmentRef,{ownerUid:uid,ownerUsername:e.uname||uName(uid),basisIncome:e.income,amount,method:'bill',status:'issued',dueDate:due,billId:billRef.id,createdAt:now8601(),createdBy:G.user.uid});
   await batch.commit();await audit('gov.tax.bill',{uid,amount});toast(`Tax bill of ${fmt(amount)} issued (due ${due}).`);await loadAll();
 }
 async function collectTaxNow(uid){
