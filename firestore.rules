@@ -302,6 +302,82 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+
+    // ── Business invitations and ownership handoffs ──
+    match /businessInvitations/{id} {
+      allow read: if isAdmin() || (signedIn() && (
+        resource.data.recipientUid == me() ||
+        (resource.data.keys().hasAny(['businessId']) && isBusinessMember(resource.data.businessId))
+      ));
+      allow create: if signedIn() && request.resource.data.keys().hasAll(['businessId','recipientUid']) &&
+        isBusinessOwner(request.resource.data.businessId);
+      allow update: if isAdmin() || (signedIn() && (
+        resource.data.recipientUid == me() ||
+        (resource.data.keys().hasAny(['businessId']) && isBusinessOwner(resource.data.businessId))
+      ));
+      allow delete: if isAdmin() || (signedIn() && resource.data.keys().hasAny(['businessId']) && isBusinessOwner(resource.data.businessId));
+    }
+    match /businessOwnershipTransfers/{id} {
+      allow read: if isAdmin() || (signedIn() && (
+        resource.data.newOwnerUid == me() || resource.data.oldOwnerUid == me() ||
+        (resource.data.keys().hasAny(['businessId']) && isBusinessMember(resource.data.businessId))
+      ));
+      allow create: if signedIn() && request.resource.data.keys().hasAll(['businessId','newOwnerUid']) &&
+        isBusinessOwner(request.resource.data.businessId);
+      allow update: if isAdmin() || (signedIn() && (
+        resource.data.newOwnerUid == me() ||
+        (resource.data.keys().hasAny(['businessId']) && isBusinessOwner(resource.data.businessId))
+      ));
+      allow delete: if isAdmin();
+    }
+
+    // ── Corporate registry, subsidiaries and intercompany actions ──
+    match /corporateApplications/{id} {
+      allow read: if isAdmin() || (signedIn() && (
+        resource.data.submittedByUid == me() ||
+        (resource.data.keys().hasAny(['parentBusinessId']) && isBusinessMember(resource.data.parentBusinessId)) ||
+        (resource.data.keys().hasAny(['childBusinessId']) && isBusinessMember(resource.data.childBusinessId))
+      ));
+      allow create: if signedIn() && request.resource.data.keys().hasAll(['parentBusinessId','childBusinessId']) &&
+        canBusiness(request.resource.data.parentBusinessId,'ownership');
+      allow update, delete: if isAdmin();
+    }
+    match /corporateHoldings/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+    match /corporateActions/{id} {
+      allow read: if isAdmin() || (signedIn() && (
+        resource.data.submittedByUid == me() ||
+        (resource.data.keys().hasAny(['fromBusinessId']) && isBusinessMember(resource.data.fromBusinessId)) ||
+        (resource.data.keys().hasAny(['toBusinessId']) && isBusinessMember(resource.data.toBusinessId))
+      ));
+      allow create: if signedIn() && request.resource.data.keys().hasAll(['fromBusinessId','toBusinessId']) &&
+        canBusiness(request.resource.data.fromBusinessId,'ownership');
+      allow update, delete: if isAdmin();
+    }
+
+    // ── Bank operating income and treasury investments ──
+    match /bankRevenueSettings/{bank} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+    match /bankRevenueEntries/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+    match /bankTreasuryInvestments/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    // Requests are created by the trusted password-recovery backend. Only the
+    // UID-locked Head Administrator may inspect or change their status.
+    match /passwordResetRequests/{id} {
+      allow read, update, delete: if isHeadAdmin();
+      allow create: if false;
+    }
+
     match /economicPolicy/{id} { allow read: if signedIn(); allow write: if isAdmin(); }
     match /economicEstimates/{id} { allow read, write: if isAdmin(); }
 
@@ -367,6 +443,44 @@ service cloud.firestore {
     match /fundHoldings/{id} { allow read: if isAdmin() || ownsData(resource.data) || businessLinked(resource.data); allow create, update: if isHeadAdmin() || (signedIn() && (request.resource.data.ownerUid == me() || businessLinked(request.resource.data))); allow delete: if isAdmin(); }
 
     match /casino/{id} { allow read: if signedIn(); allow write: if isAdmin() || managesBank('OC'); }
+    // House P/L ledger — every player's settle transaction increments it, so signed-in update is required.
+    match /casino/house {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.keys().hasOnly([
+        'houseNet','totalWagered','totalReturned','plays','updatedAt','resetAt','resetBy'
+      ]);
+      allow update: if isAdmin() || (signedIn() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'houseNet','totalWagered','totalReturned','plays','updatedAt'
+        ])
+      );
+      allow delete: if isAdmin();
+    }
+
+    // ── U.U.R. Government (treasury, revenue ledger, tax assessments) ──
+    // The treasury balance is incremented by players' casino settle transactions (winnings tax),
+    // so signed-in create/update is required. All other government docs are admin-only.
+    match /government/treasury {
+      allow read: if signedIn();
+      allow create: if isAdmin() || (signedIn() && request.resource.data.keys().hasOnly(['balance','updatedAt']) && request.resource.data.balance >= 0);
+      allow update: if isAdmin() || (signedIn() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['balance','updatedAt']) &&
+        request.resource.data.balance is number && resource.data.balance is number &&
+        request.resource.data.balance >= resource.data.balance
+      );
+      allow delete: if isAdmin();
+    }
+    match /government/{id} { allow read: if signedIn(); allow write: if isAdmin(); }
+    match /taxLedger/{id} {
+      allow read: if isAdmin() || ownsData(resource.data);
+      allow create: if isAdmin() || (signedIn() && request.resource.data.ownerUid == me() && request.resource.data.amount is number && request.resource.data.amount >= 0); // casino settles or administrator collections
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+    match /taxAssessments/{id} {
+      allow read: if isAdmin() || ownsData(resource.data);
+      allow write: if isAdmin();
+    }
     match /casinoPlayers/{uid} {
       allow read: if signedIn() && (uid == me() || isAdmin() || managesBank('OC'));
       allow create, update: if signedIn() && (uid == me() || isAdmin() || managesBank('OC'));

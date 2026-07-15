@@ -584,7 +584,7 @@ function printBrandedStatement(account, txs, monthLabel){
 (function(){
   const css=document.createElement('style');
   css.textContent=`
-#uur-toasts{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+#uur-toasts{position:fixed;bottom:84px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px}
 .uur-toast{padding:12px 18px;border-radius:10px;font:600 13px/1.4 system-ui,sans-serif;color:#fff;max-width:340px;opacity:0;transform:translateY(8px);transition:all .3s;box-shadow:0 10px 30px rgba(0,0,0,.35)}
 .uur-toast.show{opacity:1;transform:none}
 .uur-toast.ok{background:#15803d}.uur-toast.bad{background:#b91c1c}
@@ -620,6 +620,11 @@ function printBrandedStatement(account, txs, monthLabel){
 .uur-network-notice{display:flex;justify-content:space-between;gap:16px;align-items:center;padding:9px 18px;border-bottom:1px solid rgba(255,255,255,.14);background:#172033;color:#edf4ff;font-size:12px;line-height:1.45}
 .uur-network-notice b{margin-right:8px}.uur-network-notice span{opacity:.9}.uur-network-notice small{opacity:.7;white-space:nowrap;font-size:10px}.uur-network-warning{background:#4a3508;color:#fff0b0}.uur-network-critical{background:#4b1118;color:#ffd3d7}
 @media(max-width:700px){.uur-network-notice{align-items:flex-start;flex-direction:column;gap:3px}.uur-network-notice small{white-space:normal}}
+.uur-guide-btn{position:fixed;bottom:18px;right:18px;z-index:8000;width:52px;height:52px;border-radius:50%;border:1px solid rgba(255,255,255,.2);background:#0b1220;color:#9fc2ff;font:800 22px system-ui,sans-serif;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.uur-guide-btn:hover{background:#12203a}
+.uur-guide-item{padding:10px 0;border-bottom:1px solid rgba(255,255,255,.09);font:400 12.5px/1.55 system-ui,sans-serif}
+.uur-guide-item:last-child{border-bottom:0}
+.uur-guide-item b{display:block;font-size:13px;margin-bottom:2px;color:#cfe0ff}
 `;
   document.head.appendChild(css);
 })();
@@ -633,14 +638,174 @@ function mountSwitcher(current){
   const advancedLink=isAdmin()&&current!=='ADVADMIN'?`<a href="advanced-admin.html"><span style="width:30px;text-align:center;font-size:15px">▦</span><span>Programs & Economy</span></a>`:'';
   const servicesLink=current!=='SERVICES'?`<a href="services.html"><span style="width:30px;text-align:center;font-size:15px">◆</span><span>Finance Services</span></a>`:'';
   const corporateLink=current!=='CORPORATE'?`<a href="corporate.html"><span style="width:30px;text-align:center;font-size:15px">⌘</span><span>Corporate Registry</span></a>`:'';
+  const govLink=isAdmin()&&current!=='GOV'?`<a href="government.html"><span style="width:30px;text-align:center;font-size:15px">🏛</span><span>U.U.R. Government</span></a>`:'';
   const bizOptions=Object.entries(G.businessMemberships||{}).map(([businessId,m])=>{const acct=Object.values(G.accounts||{}).find(a=>a.businessId===businessId);const name=acct?.businessName||m.businessName||m.name||businessId;return `<option value="business:${esc(businessId)}" ${G.activeProfile?.businessId===businessId?'selected':''}>${esc(name)}</option>`;}).join('');
-  wrap.innerHTML=`<div class="uur-switcher-menu"><div class="uur-profile-box"><label>Operating profile</label><select id="uur-global-profile"><option value="personal" ${G.activeProfile?.type!=='business'?'selected':''}>Personal · ${esc(G.username)}</option>${bizOptions}</select><span class="uur-profile-active">Currently operating as ${esc(operatingProfileName())}. Accounts and actions stay legally separate.</span></div><a href="index.html"><span style="width:30px;text-align:center;font-size:16px">⌂</span><span>Union Portal Home</span></a>${servicesLink}${corporateLink}${adminLink}${advancedLink}${links}<a href="#" onclick="doLogout();return false"><span style="width:30px;text-align:center;font-size:15px">⎋</span><span>Sign out</span></a></div><button class="uur-switcher-btn" title="Union of the United Republics Financial Network">U.U.R</button>`;
+  wrap.innerHTML=`<div class="uur-switcher-menu"><div class="uur-profile-box"><label>Operating profile</label><select id="uur-global-profile"><option value="personal" ${G.activeProfile?.type!=='business'?'selected':''}>Personal · ${esc(G.username)}</option>${bizOptions}</select><span class="uur-profile-active">Currently operating as ${esc(operatingProfileName())}. Accounts and actions stay legally separate.</span></div><a href="index.html"><span style="width:30px;text-align:center;font-size:16px">⌂</span><span>Union Portal Home</span></a>${servicesLink}${corporateLink}${adminLink}${advancedLink}${govLink}${links}<a href="#" onclick="doLogout();return false"><span style="width:30px;text-align:center;font-size:15px">⎋</span><span>Sign out</span></a></div><button class="uur-switcher-btn" title="Union of the United Republics Financial Network">U.U.R</button>`;
   wrap.querySelector('button').addEventListener('click',()=>wrap.classList.toggle('open'));
   wrap.querySelector('#uur-global-profile')?.addEventListener('change',e=>{const v=e.target.value;if(v==='personal')setOperatingProfile('personal');else{const id=v.slice(9),acct=Object.values(G.accounts||{}).find(a=>a.businessId===id);setOperatingProfile('business',id,acct?.businessName||id)}});
-  document.addEventListener('click',e=>{if(!wrap.contains(e.target))wrap.classList.remove('open')});document.body.appendChild(wrap);mountPendingTaskIndicator();
+  document.addEventListener('click',e=>{if(!wrap.contains(e.target))wrap.classList.remove('open')});document.body.appendChild(wrap);mountPendingTaskIndicator();mountGuide(current);mountTaskNavigator(current);
+}
+
+/* ── "What does this page do?" guide (floating ? button, bottom-right) ── */
+const PAGE_GUIDES = {
+  IUB:{t:'IUB — the Union\u2019s central bank',items:[
+    ['Accounts & transfers','Your main Emerul checking/savings. Send money to any member or business by username; cross-currency transfers to VNB convert automatically at the live fixing rate.'],
+    ['Savings & Certificates of Deposit','Lock money for 7–180 days at a fixed rate. Redeeming early costs a penalty — the longer the term, the better the rate.'],
+    ['Loans & bill pay','Request a loan (an admin or manager approves it, then the money lands in your account) and pay outstanding bills, including government tax bills.'],
+    ['Manager Desk','Visible only to appointed staff: credit/debit members, freeze accounts, and decide loan applications for this bank.']]},
+  MERALD:{t:'MERALD — the neobank',items:[
+    ['Card & vaults','A modern view of your MERALD balance. Vaults are sub-pockets for setting money aside without leaving the account.'],
+    ['Transfer Guard','Extra confirmation on large or unusual transfers so you don\u2019t fat-finger your fortune away.'],
+    ['Spending insights','Automatic breakdown of where your Emerul actually goes.']]},
+  VNB:{t:'VNB — Valorianische Nationalbank',items:[
+    ['Frank (₣) accounts','VNB accounts hold Valorian Franks, not Emerul. The fixing board shows today\u2019s ₣/EM rate.'],
+    ['Exchange desk','Convert between Emerul and Franks. The spread is set by VNB monetary authority (admins).'],
+    ['Why use it','Currency diversification, roleplay trade with Valoria, and FX speculation if you think the Frank will move.']]},
+  CSE:{t:'CSE — Central Stock Exchange',items:[
+    ['Quotes & charts','Live simulated prices for every listed company. Click a ticker to see its chart and your position.'],
+    ['Buy / sell','Orders execute at market with a small fee and spread. Newly bought shares may have a short hold-lock before you can flip them.'],
+    ['Portfolio & ownership','Your positions, average cost, profit/loss, and what percentage of each company you own. Big enough stakes give shareholder votes.']]},
+  OC:{t:'OC Online Casino — how the floor works',items:[
+    ['Betting basics','Pick a bank account (Emerul only), set a bet within the table limits, and play. There\u2019s a cooldown between plays and a daily play cap.'],
+    ['Winnings tax','The U.U.R. Government withholds a percentage of every net win automatically — it\u2019s shown on your result and goes to the national treasury.'],
+    ['Treasury protection','If the house\u2019s total losses ever reach the government\u2019s limit, the floor locks until an administrator reviews the books. This keeps the casino from bankrupting the economy.'],
+    ['Loyalty & tournaments','Every Emerul wagered earns loyalty points toward tiers. Tournaments have an entry fee and a prize pool.']]},
+  SERVICES:{t:'Finance Services — your operating center',items:[
+    ['Operating profile','The dropdown in the U.U.R. switcher (bottom-left) controls WHO you\u2019re acting as: yourself, or a business you belong to. Business money and personal money never mix.'],
+    ['Scheduled payments & goals','Automate recurring transfers and track savings targets.'],
+    ['Taxes','File a yearly declaration here. The Government can also assess you directly based on your real recorded income — unpaid tax bills hurt your credit.'],
+    ['Business Center','Apply to found a business, manage members and permissions (payroll, accounting, CSE trading), run payroll, and send invoices.'],
+    ['Credit estimate','A roleplay score built from balances, paid loans, taxes, and bankruptcies. Higher scores make loan approval more likely.']]},
+  CORPORATE:{t:'Corporate Registry',items:[
+    ['What it is','The public register of every business in the Union — ownership, subsidiaries, and listing status.'],
+    ['Ownership chains','Companies can own companies. For CSE-listed firms, shares are the legal ownership units.']]},
+  ADMIN:{t:'Network Administration — quick orientation',items:[
+    ['Overview','Network KPIs, alerts that need action, and who\u2019s online right now.'],
+    ['All Accounts','Search every account in the Union. Click a row to open the editor: set balances, freeze, rename, or credit/debit with a ledger entry.'],
+    ['Users & Roles','Promote admins, appoint per-bank managers, or create a complete new login (auth + all three bank accounts) without signing yourself out.'],
+    ['Loans & Bills','Approve/deny pending loan requests, watch every active loan on the network, and post bills against any account.'],
+    ['Treasury & Ledger','Move money between any two accounts and browse the universal transaction ledger.'],
+    ['Casino','Table limits, odds, the government winnings tax, and the house-loss protection limit. The house P/L tracker shows whether the casino is up or down overall.'],
+    ['Tip','Deeper economic tools (tax assessment, treasury spending, fines) live in the U.U.R. Government console — open it from the U.U.R. switcher.']]},
+  ADVADMIN:{t:'Programs & Economy',items:[
+    ['Approvals','Business applications, stock listings, insurance, bankruptcy and collateral loan cases all queue here.'],
+    ['Economy','Circulation, inflation pressure, wealth concentration, and the published economic policy (benchmark rate, tax rates).'],
+    ['Snapshots','Press “Record economy snapshot” regularly — the history charts are built from these.'],
+    ['Migration','Convert legacy shared business logins into member-based businesses without losing history.']]},
+  GOV:{t:'U.U.R. Government — Revenue, Treasury & Oversight',items:[
+    ['Earnings Intelligence','Every member\u2019s real recorded income (payroll, casino wins, transfers in, interest, dividends) over a chosen period, with a suggested tax figure at the published rate. Assess from here.'],
+    ['Issue bill vs. Collect now','“Issue tax bill” posts a bill the member must pay themselves. “Collect now” deducts immediately from their largest account and deposits it in the treasury.'],
+    ['Treasury','The government\u2019s own balance. Tax revenue flows in automatically (casino tax, collections); pay out grants and stimulus from here.'],
+    ['Loans oversight','Every loan on the network — pending, active, overdue — in one table.'],
+    ['Casino controls','Set the winnings tax, the maximum house loss (treasury protection), and reset the house ledger after a review.'],
+    ['Wealth tax & fines','One-time levies on balances above a threshold, and targeted fines. Everything lands in the revenue ledger with a paper trail.']]}
+};
+function mountGuide(current){
+  document.querySelectorAll('.uur-guide-btn').forEach(x=>x.remove());
+  const g=PAGE_GUIDES[current]; if(!g) return;
+  const btn=document.createElement('button');
+  btn.className='uur-guide-btn'; btn.textContent='?'; btn.title='What does this page do?';
+  btn.addEventListener('click',()=>{
+    const body=g.items.map(([h,d])=>`<div class="uur-guide-item"><b>${esc(h)}</b>${esc(d)}</div>`).join('');
+    showModal(g.t,'A quick guide to this page. Press the ? button any time.',body,`<button class="uur-modal-x" style="opacity:1;border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:8px 14px;font:700 12px system-ui" onclick="closeModal()">Got it</button>`);
+  });
+  document.body.appendChild(btn);
 }
 
 async function mountPendingTaskIndicator(){
   if(!G.user)return;let el=document.getElementById('uur-task-badge');if(!el){el=document.createElement('a');el.id='uur-task-badge';el.className='uur-task-badge';el.href='services.html';document.body.appendChild(el)}
   try{const uid=G.user.uid,[ns,apps,invs,invites,transfers]=await Promise.all([db.collection('notifications').where('recipientUid','==',uid).limit(100).get().catch(()=>null),db.collection('businessApplications').where('ownerUid','==',uid).limit(50).get().catch(()=>null),db.collection('invoices').where('recipientUid','==',uid).limit(100).get().catch(()=>null),db.collection('businessInvitations').where('recipientUid','==',uid).limit(50).get().catch(()=>null),db.collection('businessOwnershipTransfers').where('newOwnerUid','==',uid).limit(50).get().catch(()=>null)]);let count=0;if(ns)count+=ns.docs.filter(d=>d.data().read!==true).length;if(apps)count+=apps.docs.filter(d=>['pending','changes_requested'].includes(String(d.data().status||'pending'))).length;if(invs)count+=invs.docs.filter(d=>['pending','due','overdue'].includes(String(d.data().status||'pending'))).length;if(invites)count+=invites.docs.filter(d=>String(d.data().status||'pending')==='pending').length;if(transfers)count+=transfers.docs.filter(d=>String(d.data().status||'pending')==='pending').length;G.pendingTaskCount=count;el.innerHTML=`<span>Pending tasks</span><span class="uur-task-count">${count}</span>`;el.classList.toggle('show',count>0)}catch(e){console.warn('pending task indicator',e);el.classList.remove('show')}
 }
+
+
+/* ── Guided task navigator + command palette ── */
+const UUR_TASK_NAV = {
+  ADMIN:{attr:'tab',storage:'uur:last-admin-task',items:{
+    dashboard:['Start here','See alerts, balances, system health and the next recommended actions.'],
+    accounts:['People & accounts','Find an account, correct balances, freeze access or post a documented adjustment.'],
+    users:['Users & staff','Create logins, change roles and assign institution-specific managers.'],
+    banking:['Loans & bills','Approve requests, monitor active debt, collect payments and manage bills.'],
+    treasury:['Treasury & ledger','Move money between accounts and search the network transaction history.'],
+    casino:['Casino safety','Configure limits, taxes and house-loss protection before opening the casino.'],
+    cse:['CSE administration','Control market settings, securities, listings and exchange operations.'],
+    vnb:['VNB policy','Publish the Frank exchange rate, spread and monetary notices.'],
+    system:['System tools','Post network announcements, run diagnostics and export backups.'],
+    passwords:['Password recovery','Head Administrator only: review secure recovery requests.'],
+    support:['Account support mode','Head Administrator only: temporarily operate as another member for troubleshooting.'],
+    audit:['Audit & presence','See recent sessions, online status and protected administrator actions.']
+  }},
+  ADVADMIN:{attr:'v',storage:'uur:last-program-task',items:{
+    queue:['Applications','Review business, stock, insurance, bankruptcy, merger and collateral requests.'],
+    business:['Businesses & migration','Manage approved businesses, members and legacy-login migrations.'],
+    markets:['Markets & programs','Run dividends, splits, votes, bonds, funds and limit-order processing.'],
+    bankowners:['Bank ownership','Assign bank equity and settle declared profit or loss periods.'],
+    bankrevenue:['Bank income','Configure how banks earn money and manage treasury investments.'],
+    economy:['Economy dashboard','Review circulation, reserves, concentration and historical snapshots.'],
+    casino:['Casino programs','Create tournaments and configure loyalty rewards.'],
+    staff:['Staff access','Assign institution-specific staff permissions and titles.']
+  }},
+  SERVICES:{attr:'view',storage:'uur:last-services-task',items:{
+    overview:['My overview','See balances, due items, notifications and your active operating profile.'],
+    personal:['Personal finance','Schedule payments, create goals, file taxes and apply for protection.'],
+    business:['My businesses','Apply, switch businesses, run payroll, invoices, reports and listing requests.'],
+    bankownership:['Bank ownership','Review your personal and business stakes in financial institutions.'],
+    markets:['Market programs','Place limit orders, vote and review bonds, funds and dividends.'],
+    statements:['Statements','Generate printable or CSV account statements.'],
+    notifications:['Notifications','Review approvals, invoices, taxes, dividends and network messages.']
+  }},
+  CORPORATE:{attr:'view',storage:'uur:last-corporate-task',items:{
+    directory:['Company directory','Find a company and see public or private ownership.'],
+    structure:['Ownership structure','View parent companies, subsidiaries and indirect control.'],
+    actions:['Corporate requests','Submit subsidiary, joint-venture and ownership-change requests.'],
+    admin:['Registry administration','Connect stocks, create public companies and apply shareholder control.']
+  }},
+  GOV:{attr:'tab',storage:'uur:last-government-task',items:{
+    overview:['Fiscal overview','See treasury health, revenue and urgent government alerts.'],
+    earnings:['Earnings & taxation','Compare recorded earnings, filings and proposed tax assessments.'],
+    treasury:['Treasury & revenue','Review income and issue grants or documented adjustments.'],
+    loans:['Loans oversight','Monitor all active, overdue and defaulted debt.'],
+    casino:['Casino fiscal controls','Protect the treasury with taxes, payout limits and loss controls.'],
+    tools:['Government actions','Set tax policy, preview levies, issue fines and publish decrees.']
+  }}
+};
+function uurTaskButton(current,key){const cfg=UUR_TASK_NAV[current];return cfg?document.querySelector(`.tab[data-${cfg.attr}="${CSS.escape(key)}"]`):null;}
+function uurCurrentTask(current){const cfg=UUR_TASK_NAV[current];if(!cfg)return null;const active=document.querySelector(`.tab.active[data-${cfg.attr}]`);return active?.dataset?.[cfg.attr]||Object.keys(cfg.items)[0];}
+function uurActivateTask(current,key){const b=uurTaskButton(current,key);if(b){b.click();b.scrollIntoView({block:'nearest',inline:'center'});}}
+function uurTaskDescription(current,key){const cfg=UUR_TASK_NAV[current];return cfg?.items?.[key]||[key,''];}
+function mountTaskNavigator(current){
+  document.querySelectorAll('.uur-task-nav,.uur-command-btn').forEach(x=>x.remove());
+  const cfg=UUR_TASK_NAV[current];if(!cfg)return;
+  const host=document.querySelector('main');if(!host)return;
+  const nav=document.createElement('section');nav.className='uur-task-nav';
+  const opts=Object.entries(cfg.items).filter(([k])=>uurTaskButton(current,k)).map(([k,v])=>`<option value="${esc(k)}">${esc(v[0])}</option>`).join('');
+  nav.innerHTML=`<div class="uur-task-nav-label"><b>What do you need to do?</b><span id="uur-task-nav-copy"></span></div><select id="uur-task-nav-select">${opts}</select><button type="button" class="uur-command-btn-inline">Search tools <kbd>Ctrl K</kbd></button>`;
+  host.insertBefore(nav,host.firstChild);
+  const select=nav.querySelector('select'),copy=nav.querySelector('#uur-task-nav-copy');
+  const sync=()=>{const key=uurCurrentTask(current)||select.value;select.value=key;const d=uurTaskDescription(current,key);copy.textContent=d[1];try{localStorage.setItem(cfg.storage,key)}catch{}};
+  select.addEventListener('change',()=>uurActivateTask(current,select.value));
+  nav.querySelector('.uur-command-btn-inline').addEventListener('click',()=>openUurCommandPalette(current));
+  document.querySelectorAll(`.tab[data-${cfg.attr}]`).forEach(b=>b.addEventListener('click',()=>setTimeout(sync,0)));
+  const saved=(()=>{try{return localStorage.getItem(cfg.storage)}catch{return null}})();
+  if(saved&&uurTaskButton(current,saved))setTimeout(()=>uurActivateTask(current,saved),30);else sync();
+  if(!document.documentElement.dataset.uurCommandKeys){document.documentElement.dataset.uurCommandKeys='1';document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&String(e.key).toLowerCase()==='k'){e.preventDefault();openUurCommandPalette(document.body.dataset.brand||current)}})}
+}
+function openUurCommandPalette(current){
+  const cfg=UUR_TASK_NAV[current];if(!cfg)return;
+  const items=Object.entries(cfg.items).filter(([k])=>uurTaskButton(current,k));
+  const rows=items.map(([k,v])=>`<button type="button" class="uur-command-row" data-task="${esc(k)}"><b>${esc(v[0])}</b><span>${esc(v[1])}</span></button>`).join('');
+  showModal('Find an admin or business tool','Type a word such as loan, tax, casino, business, stock or account.',`<input id="uur-command-search" class="uur-command-search" placeholder="Search tools…" autocomplete="off"><div id="uur-command-results">${rows}</div>`,`<button class="uur-modal-x" style="opacity:1;border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:8px 14px;font:700 12px system-ui" onclick="closeModal()">Close</button>`);
+  const search=document.getElementById('uur-command-search');
+  const bind=()=>document.querySelectorAll('.uur-command-row').forEach(r=>r.onclick=()=>{closeModal();uurActivateTask(current,r.dataset.task)});bind();
+  search?.addEventListener('input',()=>{const q=search.value.trim().toLowerCase();document.querySelectorAll('.uur-command-row').forEach(r=>r.style.display=!q||r.textContent.toLowerCase().includes(q)?'flex':'none')});
+  setTimeout(()=>search?.focus(),30);
+}
+(function(){
+  const css=document.createElement('style');css.textContent=`
+.uur-task-nav{display:grid;grid-template-columns:minmax(260px,1fr) minmax(220px,340px) auto;gap:12px;align-items:center;border:1px solid rgba(123,162,235,.22);background:linear-gradient(135deg,rgba(79,124,255,.11),rgba(12,22,38,.96));border-radius:14px;padding:12px 14px;margin-bottom:18px;box-shadow:0 14px 34px rgba(0,0,0,.16)}
+.uur-task-nav-label b{display:block;font:800 11px/1.2 system-ui;text-transform:uppercase;letter-spacing:.08em;color:#c9d7ff}.uur-task-nav-label span{display:block;margin-top:4px;color:#8fa1bd;font:500 11.5px/1.45 system-ui}
+.uur-task-nav select,.uur-command-search{width:100%;border:1px solid rgba(137,174,255,.22);border-radius:9px;background:#111c30;color:#edf4ff;padding:9px 10px;font:700 12px system-ui}
+.uur-command-btn-inline{border:1px solid rgba(137,174,255,.22);border-radius:9px;background:rgba(255,255,255,.04);color:#dce7fa;padding:9px 11px;font:750 11px system-ui;white-space:nowrap}.uur-command-btn-inline kbd{margin-left:5px;border:1px solid rgba(255,255,255,.16);border-radius:5px;padding:2px 5px;font:700 9px system-ui;color:#9fb2ce}
+.uur-command-row{width:100%;display:flex;flex-direction:column;align-items:flex-start;text-align:left;border:0;border-bottom:1px solid rgba(255,255,255,.08);background:transparent;color:#edf4ff;padding:11px 5px;cursor:pointer}.uur-command-row:hover{background:rgba(79,124,255,.09)}.uur-command-row b{font-size:12.5px}.uur-command-row span{color:#8fa1bd;font-size:11px;line-height:1.45;margin-top:2px}
+@media(max-width:850px){.uur-task-nav{grid-template-columns:1fr}.uur-command-btn-inline{width:100%}}
+`;document.head.appendChild(css);
+})();

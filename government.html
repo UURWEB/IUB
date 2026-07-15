@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>U.U.R. Government — Revenue, Treasury & Oversight</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0906;--panel:#151209;--panel2:#1d1810;--line:rgba(225,184,77,.18);--text:#f3ecdd;--muted:#a4977b;--blue:#4f7cff;--green:#22c55e;--red:#ef4444;--amber:#f59e0b;--gold:#e1b84d;--mono:'IBM Plex Mono',monospace;--sans:Inter,system-ui,sans-serif;--display:'Space Grotesk',sans-serif;--modal-bg:#1d1810;--modal-fg:#f3ecdd}
+*{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}body{min-height:100vh;background:radial-gradient(900px 520px at 15% -10%,rgba(225,184,77,.16),transparent 62%),radial-gradient(700px 480px at 100% 20%,rgba(79,124,255,.06),transparent 65%),var(--bg);color:var(--text);font-family:var(--sans)}
+button,input,select,textarea{font:inherit}button{cursor:pointer}a{color:inherit}
+#gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:28px}.gate-card{max-width:520px;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:34px;box-shadow:0 35px 90px rgba(0,0,0,.45)}.gate-card h1{font-family:var(--display);font-size:25px;margin-bottom:8px}.gate-card p{color:var(--muted);line-height:1.65;margin-bottom:18px}.top-btn{border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--text);border-radius:8px;padding:7px 11px;text-decoration:none;font-size:12px}
+#app{display:none}.top{position:sticky;top:0;z-index:70;background:rgba(10,9,6,.94);backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}.top-main{height:62px;padding:0 20px;display:flex;align-items:center;gap:14px}.mark{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--gold),#7a5a10);display:grid;place-items:center;font:800 15px var(--display);color:#241a02}.brand{font:700 15px var(--display)}.brand small{display:block;color:var(--muted);font:500 10px var(--sans);letter-spacing:.08em;text-transform:uppercase;margin-top:2px}.top-user{margin-left:auto;display:flex;align-items:center;gap:9px;font-size:12px;color:var(--muted)}.badge{border:1px solid rgba(225,184,77,.5);background:rgba(225,184,77,.12);color:#f0d894;border-radius:999px;padding:4px 9px;font-size:10px;font-weight:800;letter-spacing:.08em}
+.tabs{display:flex;gap:5px;padding:0 20px 10px;overflow:auto;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}.tab{white-space:nowrap;border:1px solid transparent;background:transparent;color:var(--muted);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700}.tab:hover{color:var(--text)}.tab.active{color:#f0d894;border-color:rgba(225,184,77,.4);background:rgba(225,184,77,.12)}
+main{max-width:1400px;margin:0 auto;padding:24px 20px 90px}.hero{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;padding:24px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(135deg,rgba(225,184,77,.16),rgba(21,18,9,.95) 50%,rgba(79,124,255,.05));margin-bottom:20px}.hero h1{font:700 27px var(--display);letter-spacing:-.02em}.hero p{color:var(--muted);font-size:13px;margin-top:6px;max-width:780px;line-height:1.55}.hero-state{font:600 11px var(--mono);border:1px solid rgba(34,197,94,.32);background:rgba(34,197,94,.08);color:#9df0b8;border-radius:999px;padding:8px 11px;white-space:nowrap}
+.view{display:none}.view.active{display:block}.grid{display:grid;gap:16px}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}.side{grid-template-columns:minmax(0,1.25fr) minmax(330px,.75fr)}@media(max-width:1050px){.g4{grid-template-columns:1fr 1fr}.g3{grid-template-columns:1fr 1fr}.side{grid-template-columns:1fr}}@media(max-width:720px){.g2,.g3,.g4{grid-template-columns:1fr}.hero{align-items:flex-start;flex-direction:column}.top-main{flex-wrap:wrap;height:auto;padding-top:10px;padding-bottom:10px}.top-user{margin-left:0;width:100%}}
+.card{background:linear-gradient(180deg,rgba(29,24,16,.98),rgba(16,13,7,.98));border:1px solid var(--line);border-radius:15px;padding:18px;box-shadow:0 18px 45px rgba(0,0,0,.22);min-width:0}.card h2{font:700 14px var(--display);letter-spacing:.04em;margin-bottom:4px}.sub{font-size:11.5px;color:var(--muted);line-height:1.5;margin-bottom:14px}.kpi{padding:16px}.kpi .k{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:800}.kpi .v{font:600 22px var(--mono);margin-top:7px;white-space:nowrap;overflow:auto}.kpi .s{font-size:10.5px;color:var(--muted);margin-top:3px}.line{height:1px;background:var(--line);margin:16px 0}
+label{display:block;font-size:10px;font-weight:800;letter-spacing:.075em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}.field{margin-bottom:11px}.row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.row3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}@media(max-width:800px){.row,.row3{grid-template-columns:1fr}}
+input,select,textarea{width:100%;padding:10px 11px;border:1px solid var(--line);border-radius:9px;background:rgba(255,255,255,.035);color:var(--text);outline:none;font-size:12.5px}select option{background:#1d1810}input:focus,select:focus,textarea:focus{border-color:rgba(225,184,77,.6);box-shadow:0 0 0 3px rgba(225,184,77,.09)}.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{border:1px solid var(--line);background:rgba(255,255,255,.035);color:var(--text);border-radius:9px;padding:9px 12px;font-size:12px;font-weight:750}.btn:hover{border-color:rgba(225,184,77,.55);background:rgba(225,184,77,.08)}.btn.primary{background:var(--gold);border-color:var(--gold);color:#241a02}.btn.good{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.35);color:#a7f3d0}.btn.bad{background:rgba(239,68,68,.11);border-color:rgba(239,68,68,.35);color:#fca5a5}.btn.warn{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.32);color:#fcd34d}.btn.sm{padding:6px 8px;font-size:10.5px}.btn.full{width:100%}.muted{color:var(--muted)}.mono{font-family:var(--mono)}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.toolbar input{min-width:210px;flex:1}.toolbar select{width:auto;min-width:135px}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:11px}.table{width:100%;border-collapse:collapse;min-width:760px}.table th{position:sticky;top:0;background:#1d1810;color:var(--muted);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;text-align:left;padding:10px;border-bottom:1px solid var(--line);z-index:2}.table td{padding:9px 10px;border-bottom:1px solid rgba(225,184,77,.1);font-size:11.5px;vertical-align:middle}.table tr:last-child td{border-bottom:0}.table tr:hover td{background:rgba(225,184,77,.04)}.num{text-align:right;font-family:var(--mono);white-space:nowrap}
+.pill{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px 7px;font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em}.p-active,.p-open,.p-collected,.p-paid{color:#9df0b8;border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.08)}.p-pending,.p-issued,.p-outstanding{color:#fcd34d;border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.08)}.p-frozen,.p-overdue,.p-denied{color:#fca5a5;border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.08)}
+.empty{text-align:center;color:var(--muted);padding:24px;font-size:12px}.mini-row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid rgba(225,184,77,.12);font-size:11.5px}.mini-row:last-child{border-bottom:0}
+.notice{border-left:3px solid var(--gold);padding:9px 11px;background:rgba(225,184,77,.06);font-size:11.5px;line-height:1.55;color:#d8caa7;border-radius:0 8px 8px 0;margin-bottom:12px}
+footer{max-width:1400px;margin:0 auto;padding:0 20px 34px;color:var(--muted);font-size:10.5px;line-height:1.6}
+</style>
+</head>
+<body data-brand="GOV">
+
+<div id="gate"><div class="gate-card"><h1>Checking government clearance…</h1><p>The U.U.R. Government console is restricted to recognized administrators of the Union.</p><a class="top-btn" href="index.html">Return to the Financial Portal</a></div></div>
+
+<div id="app">
+<header class="top">
+  <div class="top-main">
+    <div class="mark">🏛</div>
+    <div class="brand">U.U.R. Government<small>Revenue Service · National Treasury · Financial Oversight</small></div>
+    <div class="top-user"><span id="gov-user"></span><span class="badge" id="gov-badge">ADMIN</span><a class="top-btn" href="admin.html">Network Admin</a><a class="top-btn" href="admin-guide.html">How to use this</a><a class="top-btn" href="index.html">Portal</a></div>
+  </div>
+  <nav class="tabs">
+    <button class="tab active" data-tab="overview" onclick="switchView('overview')">Overview</button>
+    <button class="tab" data-tab="earnings" onclick="switchView('earnings')">Earnings & Taxation</button>
+    <button class="tab" data-tab="treasury" onclick="switchView('treasury')">Treasury & Revenue</button>
+    <button class="tab" data-tab="loans" onclick="switchView('loans')">Loans Oversight</button>
+    <button class="tab" data-tab="casino" onclick="switchView('casino')">Casino Fiscal Controls</button>
+    <button class="tab" data-tab="tools" onclick="switchView('tools')">Levies, Fines & Decrees</button>
+  </nav>
+</header>
+
+<main>
+<div class="hero"><div><h1>Union of the United Republics — Government Console</h1><p>See what every member actually earns, assess and collect taxes with a full paper trail, run the national treasury, oversee all lending, and keep the casino from bleeding the economy dry. Press the <b>?</b> button (bottom-right) on any page of the network for a plain-language guide.</p></div><div class="hero-state" id="live-state">● LIVE FIRESTORE</div></div><div class="card" style="margin-bottom:18px;border-color:rgba(225,184,77,.34)"><h2>Safe tax and treasury workflow</h2><div class="sub">Use this order so ordinary transfers are not accidentally treated as earnings and government money stays traceable.</div><div class="grid g4"><div class="notice"><b>1. Review earnings</b><br>Check the recorded categories and compare them with the member’s filing.</div><div class="notice"><b>2. Choose assessment type</b><br>Issue a bill for normal collection; use Collect now only for an immediate authorized assessment.</div><div class="notice"><b>3. Confirm treasury destination</b><br>Verify the national treasury before grants, fines or manual adjustments.</div><div class="notice"><b>4. Review the ledger</b><br>Every tax, grant, fine and adjustment should have a clear reason and audit trail.</div></div></div>
+
+<!-- ═══ OVERVIEW ═══ -->
+<section class="view active" id="view-overview">
+  <div class="grid g4" id="gov-kpis"></div>
+  <div class="grid side" style="margin-top:16px">
+    <div class="card"><h2>Revenue this period</h2><div class="sub">Where government money came from — casino winnings tax, income collections, wealth levies and fines. Choose a window with the selector on the Treasury tab.</div><div id="revenue-breakdown"></div></div>
+    <div class="card"><h2>Fiscal alerts</h2><div class="sub">Items that need government attention right now.</div><div id="gov-alerts"></div></div>
+  </div>
+</section>
+
+<!-- ═══ EARNINGS & TAXATION ═══ -->
+<section class="view" id="view-earnings">
+  <div class="card">
+    <h2>Earnings intelligence</h2>
+    <div class="sub">Built from the real transaction ledger — not self-reported filings. <b>Income</b> counts categorized earnings such as payroll, invoices/contracts, casino wins, interest, dividends and realized gains. Ordinary gifts and transfers are excluded by default; turn on the review option only when you intentionally want to inspect uncategorized incoming transfers. <b>Suggested tax</b> applies the published personal rate to that income. From here you can either <b>issue a tax bill</b> (the member pays it themselves from any bank page) or <b>collect now</b> (deducted immediately from their largest account into the treasury).</div>
+    <div class="toolbar">
+      <input id="earn-search" placeholder="Search member…" oninput="renderEarnings()">
+      <select id="earn-period" onchange="computeEarnings();renderEarnings()"><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option><option value="0">All loaded history</option></select>
+      <select id="earn-sort" onchange="renderEarnings()"><option value="income">Sort: income</option><option value="tax">Sort: suggested tax</option><option value="worth">Sort: net worth</option><option value="casino">Sort: casino winnings</option></select>
+      <label style="display:flex;align-items:center;gap:7px;text-transform:none;letter-spacing:0;font-size:11px;margin:0"><input id="earn-include-transfers" type="checkbox" style="width:auto" onchange="computeEarnings();renderEarnings()"> Include uncategorized incoming transfers for review</label>
+    </div>
+    <div class="notice">The ledger loads the newest 2,000 transactions. For a small server that's typically full history; if it ever isn't, the oldest activity falls outside the window.</div>
+    <div class="table-wrap"><table class="table"><thead><tr><th>Member</th><th class="num">Payroll</th><th class="num">Business / contract</th><th class="num">Casino wins</th><th class="num">Other income</th><th class="num">Total income</th><th class="num">Net worth now</th><th class="num">Suggested tax</th><th>Assess</th></tr></thead><tbody id="earn-rows"></tbody></table></div>
+  </div>
+  <div class="grid g2" style="margin-top:16px">
+    <div class="card"><h2>Tax assessments issued</h2><div class="sub">Every assessment made from this console, with its outcome.</div><div id="assessment-list"></div></div>
+    <div class="card"><h2>Self-filed declarations</h2><div class="sub">What members filed themselves in Finance Services — compare against real earnings on the left to catch under-reporting.</div><div id="filing-list"></div></div>
+  </div>
+</section>
+
+<!-- ═══ TREASURY ═══ -->
+<section class="view" id="view-treasury">
+  <div class="grid side">
+    <div class="card">
+      <h2>Revenue ledger</h2>
+      <div class="sub">Every Emerul that entered or left the treasury: casino winnings tax (automatic), income tax collections, wealth levies, fines, grants and adjustments.</div>
+      <div class="toolbar"><select id="ledger-filter" onchange="renderLedger()"><option value="">All entries</option><option value="casino_winnings_tax">Casino winnings tax</option><option value="income_tax">Income tax collections</option><option value="wealth_tax">Wealth levies</option><option value="fine">Fines</option><option value="grant">Grants / spending</option><option value="adjustment">Adjustments</option></select></div>
+      <div class="table-wrap"><table class="table" style="min-width:560px"><thead><tr><th>When</th><th>Type</th><th>Member</th><th>Detail</th><th class="num">Amount</th></tr></thead><tbody id="ledger-rows"></tbody></table></div>
+    </div>
+    <div>
+      <div class="card"><h2>National treasury</h2><div class="sub">The government's own balance. It grows automatically from taxes and shrinks when you pay grants.</div>
+        <div class="kpi" style="padding:0 0 10px"><div class="v" id="treasury-balance">—</div><div class="s">U.U.R. Emerul on hand</div></div>
+        <div class="line"></div>
+        <h2>Pay a grant / stimulus</h2><div class="sub">Sends treasury money to a member's largest Emerul account with a ledger entry.</div>
+        <div class="field"><label>Member username</label><input id="grant-user" placeholder="member_username"></div>
+        <div class="row"><div class="field"><label>Amount (EM)</label><input id="grant-amount" type="number" min="0.01" step=".01"></div><div class="field"><label>Reason</label><input id="grant-reason" placeholder="e.g. disaster relief"></div></div>
+        <button class="btn primary full" onclick="payGrant()">Pay from treasury</button>
+        <div class="line"></div>
+        <h2>Manual adjustment</h2><div class="sub">Correct the treasury balance up or down (use a negative number to remove).</div>
+        <div class="row"><div class="field"><label>Amount ±</label><input id="adj-amount" type="number" step=".01"></div><div class="field"><label>Note</label><input id="adj-note" placeholder="why"></div></div>
+        <button class="btn warn full" onclick="adjustTreasury()">Apply adjustment</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ LOANS ═══ -->
+<section class="view" id="view-loans">
+  <div class="card">
+    <h2>Network lending oversight</h2>
+    <div class="sub">Every loan in the Union in one place. <b>Overdue</b> = the due date passed with a balance still owed. Approvals and denials live in Network Administration; here the government watches exposure and can collect or write off.</div>
+    <div class="toolbar"><input id="gl-search" placeholder="Search borrower…" oninput="renderGovLoans()"><select id="gl-filter" onchange="renderGovLoans()"><option value="">All statuses</option><option value="pending">Pending</option><option value="active">Active</option><option value="overdue">Overdue</option><option value="paid">Closed</option></select></div>
+    <div id="gl-totals" class="sub"></div>
+    <div class="table-wrap"><table class="table"><thead><tr><th>Borrower</th><th class="num">Principal</th><th class="num">Owed</th><th>Rate</th><th>Due</th><th>Status</th><th>Actions</th></tr></thead><tbody id="gl-rows"></tbody></table></div>
+  </div>
+</section>
+
+<!-- ═══ CASINO FISCAL ═══ -->
+<section class="view" id="view-casino">
+  <div class="grid side">
+    <div class="card">
+      <h2>Casino fiscal position</h2>
+      <div class="sub">The house ledger is updated live by every play. A <b>negative</b> lifetime result means players are up and the casino is losing money. When losses reach the protection limit, the floor locks automatically for non-admins until the ledger is reviewed and reset.</div>
+      <div class="grid g3" id="casino-kpis"></div>
+      <div class="line"></div>
+      <div id="casino-meter"></div>
+      <div class="line"></div>
+      <h2>Biggest recent winners</h2><div class="sub">From the newest 1,000 recorded plays — who is taking the house's money.</div>
+      <div id="casino-winners"></div>
+    </div>
+    <div class="card">
+      <h2>Government casino controls</h2>
+      <div class="sub">These write directly to the live casino settings — they take effect on the next play.</div>
+      <div class="field"><label>Winnings tax % (withheld from every net win)</label><input id="gc-wtax" type="number" min="0" max="90" step="0.5"></div>
+      <div class="field"><label>Max house loss before the floor locks (EM)</label><input id="gc-maxloss" type="number" min="1" step="1000000"></div>
+      <div class="field"><label>Treasury protection</label><select id="gc-protect"><option value="1">Enabled — lock floor at limit</option><option value="0">Disabled</option></select></div>
+      <div class="field"><label>Maximum bet (EM)</label><input id="gc-maxbet" type="number" min="1" step="1"></div>
+      <button class="btn primary full" onclick="saveCasinoFiscal()">Publish fiscal controls</button>
+      <div class="line"></div>
+      <h2>House ledger review</h2>
+      <div class="sub">After investigating a big loss (and, say, adjusting the odds in Network Administration), reset the counter to reopen the floor.</div>
+      <button class="btn warn full" onclick="govResetHouse()">Reset house ledger to zero</button>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ TOOLS ═══ -->
+<section class="view" id="view-tools">
+  <div class="grid g3">
+    <div class="card">
+      <h2>Income tax policy</h2>
+      <div class="sub">The published rates used across the network — Finance Services quotes them to members and the Earnings tab uses the personal rate for suggestions.</div>
+      <div class="field"><label>Personal income tax %</label><input id="pol-personal" type="number" min="0" max="95" step="0.5"></div>
+      <div class="field"><label>Business tax %</label><input id="pol-business" type="number" min="0" max="95" step="0.5"></div>
+      <button class="btn primary full" onclick="savePolicyRates()">Publish rates</button>
+    </div>
+    <div class="card">
+      <h2>Wealth levy (one-time)</h2>
+      <div class="sub">Taxes the portion of every account balance above the threshold, immediately, into the treasury. Preview shows exactly who pays what before you confirm.</div>
+      <div class="row"><div class="field"><label>Threshold (EM)</label><input id="wl-threshold" type="number" min="0" value="1000000"></div><div class="field"><label>Rate % of excess</label><input id="wl-rate" type="number" min="0" max="95" value="5"></div></div>
+      <button class="btn full" onclick="previewWealthLevy()">Preview levy</button>
+      <div id="wl-preview" style="margin-top:10px"></div>
+    </div>
+    <div class="card">
+      <h2>Fine a member</h2>
+      <div class="sub">Deducts immediately from their largest Emerul account into the treasury, with a transaction on their statement and a revenue-ledger entry.</div>
+      <div class="field"><label>Member username</label><input id="fine-user" placeholder="member_username"></div>
+      <div class="row"><div class="field"><label>Amount (EM)</label><input id="fine-amount" type="number" min="0.01" step=".01"></div><div class="field"><label>Reason (shown to them)</label><input id="fine-reason" placeholder="e.g. market manipulation"></div></div>
+      <button class="btn bad full" onclick="issueFine()">Issue fine</button>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h2>Government decree</h2>
+    <div class="sub">Publishes an official notice banner across every page of the network (uses the shared network-notice system).</div>
+    <div class="row3"><div class="field"><label>Title</label><input id="decree-title" placeholder="e.g. Emergency Revenue Act of 1926"></div><div class="field"><label>Severity</label><select id="decree-severity"><option value="info">Info</option><option value="warning">Warning</option><option value="critical">Critical</option></select></div><div class="field"><label>&nbsp;</label><button class="btn primary full" onclick="publishDecree()">Publish decree</button></div></div>
+    <div class="field"><label>Message</label><textarea id="decree-body" placeholder="By order of the Government of the Union of the United Republics…" style="min-height:70px"></textarea></div>
+  </div>
+</section>
+
+</main>
+<footer>Government of the Union of the United Republics · Revenue Service under the Valorian Banking Act of 1926 · All figures are fictional roleplay currency.</footer>
+</div>
+
+<script src="shared.js"></script>
+<script>
+const D={users:[],accounts:[],transactions:[],loans:[],plays:[],players:[],ledger:[],assessments:[],filings:[],policy:{},casino:{},house:{},treasury:{},earn:{}};
+const col=async n=>(await db.collection(n).get()).docs.map(d=>({id:d.id,...d.data()}));
+
+function switchView(name){document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id==='view-'+name));document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===name));}
+const uName=uid=>D.users.find(u=>u.id===uid)?.username||uid||'—';
+const statusPill=s=>`<span class="pill p-${['collected','paid','completed','active','open'].includes(s)?'paid':['overdue','denied','frozen'].includes(s)?'overdue':'pending'}">${esc(s)}</span>`;
+
+async function loadAll(){
+  const [users,accounts,loans,assessments,filings]=await Promise.all([col('users'),col('accounts'),col('loans'),col('taxAssessments').catch(()=>[]),col('taxFilings').catch(()=>[])]);
+  Object.assign(D,{users,accounts,loans,assessments,filings});
+  const [tx,plays,ledger,ps,cs,hs,ts]=await Promise.all([
+    db.collection('transactions').orderBy('createdAt','desc').limit(2000).get().catch(()=>null),
+    db.collection('casinoPlays').orderBy('createdAt','desc').limit(1000).get().catch(()=>null),
+    db.collection('taxLedger').orderBy('createdAt','desc').limit(400).get().catch(()=>null),
+    db.collection('economicPolicy').doc('settings').get().catch(()=>null),
+    db.collection('casino').doc('settings').get().catch(()=>null),
+    db.collection('casino').doc('house').get().catch(()=>null),
+    db.collection('government').doc('treasury').get().catch(()=>null)
+  ]);
+  D.transactions=tx?tx.docs.map(d=>({id:d.id,...d.data()})):[];
+  D.plays=plays?plays.docs.map(d=>({id:d.id,...d.data()})):[];
+  D.ledger=ledger?ledger.docs.map(d=>({id:d.id,...d.data()})):[];
+  D.policy=ps&&ps.exists?ps.data():{};D.casino=cs&&cs.exists?cs.data():{};D.house=hs&&hs.exists?hs.data():{};D.treasury=ts&&ts.exists?ts.data():{};
+  computeEarnings();renderAll();
+}
+function renderAll(){renderOverview();renderEarnings();renderAssessments();renderFilings();renderLedger();renderTreasury();renderGovLoans();renderCasinoFiscal();renderPolicy();}
+
+/* ── Earnings intelligence ── */
+const INCOME_TYPES={payroll:/payroll|salary|wage/i,casino:/^casino_win$/i,business:/invoice_paid|business_income|contract|merchant|sale_revenue|operating_revenue/i,investment:/interest|dividend|bond_interest|capital_gain|realized_gain|bank_owner_profit|investment_income/i,uncategorized:/transfer_in|received|deposit/i};
+function computeEarnings(){
+  const days=Number($('earn-period')?.value??30),cutoff=days?Date.now()-days*86400000:0,includeTransfers=!!$('earn-include-transfers')?.checked;
+  const earn={};
+  const bump=(uid,uname,cat,amt)=>{if(!uid||amt<=0)return;const e=earn[uid]??(earn[uid]={uid,uname,payroll:0,transfer:0,casino:0,other:0,casinoNet:0});e[cat]+=amt;if(uname)e.uname=uname;};
+  for(const t of D.transactions){
+    if(cutoff&&dateFromAny(t.createdAt).getTime()<cutoff)continue;
+    const ty=String(t.type||''),amt=Number(t.amount||0);
+    if(/loan_disbursement|loan_repayment|casino_loss|casino_tournament|fee|tax|fine|withdraw|sent|transfer_out|bill/i.test(ty)&&!INCOME_TYPES.casino.test(ty))continue;
+    if(INCOME_TYPES.payroll.test(ty)||INCOME_TYPES.payroll.test(String(t.description||'')))bump(t.ownerUid,t.ownerUsername,'payroll',amt);
+    else if(INCOME_TYPES.casino.test(ty))bump(t.ownerUid,t.ownerUsername,'casino',amt);
+    else if(INCOME_TYPES.business.test(ty)||INCOME_TYPES.business.test(String(t.description||'')))bump(t.ownerUid,t.ownerUsername,'transfer',amt);
+    else if(INCOME_TYPES.investment.test(ty)||INCOME_TYPES.investment.test(String(t.description||'')))bump(t.ownerUid,t.ownerUsername,'other',amt);
+    else if(includeTransfers&&INCOME_TYPES.uncategorized.test(ty))bump(t.ownerUid,t.ownerUsername,'transfer',amt);
+  }
+  for(const p of D.plays){
+    if(cutoff&&dateFromAny(p.createdAt).getTime()<cutoff)continue;
+    if(!earn[p.ownerUid])earn[p.ownerUid]={uid:p.ownerUid,uname:p.ownerUsername,payroll:0,transfer:0,casino:0,other:0,casinoNet:0};
+    earn[p.ownerUid].casinoNet+=Number(p.net||0);
+  }
+  for(const e of Object.values(earn)){
+    e.income=Math.round((e.payroll+e.transfer+e.casino+e.other)*100)/100;
+    e.worth=D.accounts.filter(a=>a.ownerUid===e.uid&&String(a.status||'active')!=='archived').reduce((n,a)=>n+emerulEquivalent(a),0);
+    e.tax=Math.round(e.income*(Number(D.policy.personalTaxRatePct??D.policy.personalIncomeTaxPct??10))||0)/100;
+  }
+  D.earn=earn;
+}
+function renderEarnings(){
+  if(!$('earn-rows'))return;
+  const q=($('earn-search')?.value||'').toLowerCase(),sort=$('earn-sort')?.value||'income';
+  const key={income:'income',tax:'tax',worth:'worth',casino:'casinoNet'}[sort];
+  const rows=Object.values(D.earn).filter(e=>e.income>0||e.casinoNet!==0).filter(e=>!q||String(e.uname||'').toLowerCase().includes(q)).sort((a,b)=>(b[key]||0)-(a[key]||0));
+  $('earn-rows').innerHTML=rows.slice(0,150).map(e=>`<tr><td><b>${esc(e.uname||uName(e.uid))}</b></td><td class="num">${fmt(e.payroll)}</td><td class="num">${fmt(e.transfer)}</td><td class="num" style="color:${e.casino?'#f0d894':'inherit'}">${fmt(e.casino)}</td><td class="num">${fmt(e.other)}</td><td class="num"><b>${fmt(e.income)}</b></td><td class="num">${fmt(e.worth)}</td><td class="num"><b>${fmt(e.tax)}</b></td><td><span class="actions"><button class="btn sm" title="Posts a tax bill they must pay themselves. Unpaid bills hurt their credit score." onclick="issueTaxBill('${e.uid}')">Issue bill</button><button class="btn good sm" title="Deducts immediately from their largest account into the treasury." onclick="collectTaxNow('${e.uid}')">Collect now</button></span></td></tr>`).join('')||'<tr><td colspan="9" class="empty">No income recorded in this window.</td></tr>';
+}
+function biggestAccount(uid){return D.accounts.filter(a=>a.ownerUid===uid&&accountCurrency(a)!=='VF'&&String(a.status||'active')==='active').sort((a,b)=>Number(b.balance||0)-Number(a.balance||0))[0]||null;}
+function promptTaxAmount(e){const v=prompt(`Tax assessment for ${e.uname||uName(e.uid)}\nRecorded income: ${fmt(e.income)}\nSuggested (${Number(D.policy.personalTaxRatePct??10)}%): ${fmt(e.tax)}\n\nAmount to assess (EM):`,String(e.tax.toFixed(2)));const n=Number(v);return v===null?null:(n>0?Math.round(n*100)/100:null);}
+async function issueTaxBill(uid){
+  if(!requireAdmin('assess taxes'))return;const e=D.earn[uid];if(!e)return;
+  const amount=promptTaxAmount(e);if(amount===null)return;if(!amount)return toast('Enter a valid amount.',false);
+  const acct=biggestAccount(uid);if(!acct)return toast('This member has no active Emerul account to bill.',false);
+  const due=new Date(Date.now()+7*86400000).toISOString().slice(0,10);
+  const batch=db.batch();
+  batch.set(db.collection('bills').doc(),{accountId:acct.id,ownerUid:uid,ownerUsername:e.uname||uName(uid),name:`U.U.R. income tax assessment`,category:'tax',amount,dueDate:due,status:'outstanding',issuedBy:G.user.uid,issuedByUsername:G.username,createdAt:now8601()});
+  batch.set(db.collection('taxAssessments').doc(),{ownerUid:uid,ownerUsername:e.uname||uName(uid),basisIncome:e.income,amount,method:'bill',status:'issued',dueDate:due,createdAt:now8601(),createdBy:G.user.uid});
+  await batch.commit();await audit('gov.tax.bill',{uid,amount});toast(`Tax bill of ${fmt(amount)} issued (due ${due}).`);await loadAll();
+}
+async function collectTaxNow(uid){
+  if(!requireAdmin('collect taxes'))return;const e=D.earn[uid];if(!e)return;
+  const amount=promptTaxAmount(e);if(amount===null)return;if(!amount)return toast('Enter a valid amount.',false);
+  const acct=biggestAccount(uid);if(!acct)return toast('This member has no active Emerul account.',false);
+  if(Number(acct.balance||0)<amount&&!confirm(`Their largest account holds ${fmt(acct.balance)} — collecting ${fmt(amount)} will overdraw it. Continue?`))return;
+  const batch=db.batch(),createdAt=now8601();
+  batch.update(db.collection('accounts').doc(acct.id),{balance:FV.increment(-amount),updatedAt:createdAt});
+  batch.set(db.collection('transactions').doc(),{accountId:acct.id,ownerUid:uid,ownerUsername:e.uname,bank:bankName(acct),type:'tax_collection',amount,description:`U.U.R. income tax collected on recorded earnings of ${fmt(e.income)}`,createdAt,createdBy:G.user.uid});
+  batch.set(db.collection('government').doc('treasury'),{balance:FV.increment(amount),updatedAt:createdAt},{merge:true});
+  batch.set(db.collection('taxLedger').doc(),{type:'income_tax',ownerUid:uid,ownerUsername:e.uname,amount,basisIncome:e.income,createdAt,createdBy:G.user.uid});
+  batch.set(db.collection('taxAssessments').doc(),{ownerUid:uid,ownerUsername:e.uname,basisIncome:e.income,amount,method:'direct',status:'collected',createdAt,createdBy:G.user.uid});
+  await batch.commit();await audit('gov.tax.collect',{uid,amount});toast(`Collected ${fmt(amount)} into the treasury.`);await loadAll();
+}
+function renderAssessments(){$('assessment-list').innerHTML=D.assessments.sort((a,b)=>dateFromAny(b.createdAt)-dateFromAny(a.createdAt)).slice(0,40).map(a=>`<div class="mini-row"><span><b>${esc(a.ownerUsername)}</b> · ${a.method==='bill'?'billed':'collected'}<br><span class="muted">${fmtDateTime(a.createdAt)} · basis income ${fmt(a.basisIncome)}</span></span><span style="text-align:right"><b class="mono">${fmt(a.amount)}</b><br>${statusPill(a.status)}</span></div>`).join('')||'<div class="empty">No assessments issued yet.</div>';}
+function renderFilings(){$('filing-list').innerHTML=D.filings.sort((a,b)=>dateFromAny(b.createdAt)-dateFromAny(a.createdAt)).slice(0,40).map(t=>{const real=D.earn[t.ownerUid]?.income;const flag=real!=null&&Number(t.income||0)<real*0.6&&real>1000;return `<div class="mini-row"><span><b>${esc(t.ownerUsername||uName(t.ownerUid))}</b> · ${esc(t.year)}<br><span class="muted">declared ${fmt(t.income)}${real!=null?` · ledger shows ${fmt(real)} this period`:''}</span>${flag?'<br><span style="color:#fca5a5;font-size:10px;font-weight:800">POSSIBLE UNDER-REPORTING</span>':''}</span><b class="mono">${fmt(t.estimatedTax)}</b></div>`}).join('')||'<div class="empty">No self-filed declarations.</div>';}
+
+/* ── Treasury ── */
+function renderTreasury(){$('treasury-balance').textContent=fmt(D.treasury.balance||0);}
+function renderLedger(){const f=$('ledger-filter')?.value||'';const list=D.ledger.filter(l=>!f||String(l.type)===f);
+  $('ledger-rows').innerHTML=list.slice(0,120).map(l=>{const out=/grant/.test(String(l.type))||Number(l.amount)<0;return `<tr><td class="mono" style="font-size:10px">${fmtDateTime(l.createdAt)}</td><td>${esc(String(l.type||'').replace(/_/g,' '))}</td><td>${esc(l.ownerUsername||'—')}</td><td class="muted">${esc(l.reason||l.gameName||l.note||'')}</td><td class="num" style="color:${out?'#fca5a5':'#9df0b8'}">${out?'−':'+'}${fmt(Math.abs(l.amount))}</td></tr>`}).join('')||'<tr><td colspan="5" class="empty">No revenue recorded yet — the ledger fills automatically as taxes are withheld and collected.</td></tr>';}
+async function payGrant(){
+  if(!requireAdmin('pay grants'))return;
+  const uname=normalizeUsername($('grant-user').value),amount=Math.round(Number($('grant-amount').value)*100)/100,reason=$('grant-reason').value.trim()||'Government grant';
+  const user=D.users.find(u=>normalizeUsername(u.username)===uname);if(!user)return toast('Member not found.',false);
+  if(!(amount>0))return toast('Enter a valid amount.',false);
+  if(Number(D.treasury.balance||0)<amount&&!confirm(`The treasury holds ${fmt(D.treasury.balance||0)} — this grant overdraws it. Continue?`))return;
+  const acct=biggestAccount(user.id);if(!acct)return toast('Member has no active Emerul account.',false);
+  const batch=db.batch(),createdAt=now8601();
+  batch.update(db.collection('accounts').doc(acct.id),{balance:FV.increment(amount),updatedAt:createdAt});
+  batch.set(db.collection('transactions').doc(),{accountId:acct.id,ownerUid:user.id,ownerUsername:user.username,bank:bankName(acct),type:'government_grant',amount,description:`U.U.R. Government grant — ${reason}`,createdAt,createdBy:G.user.uid});
+  batch.set(db.collection('government').doc('treasury'),{balance:FV.increment(-amount),updatedAt:createdAt},{merge:true});
+  batch.set(db.collection('taxLedger').doc(),{type:'grant',ownerUid:user.id,ownerUsername:user.username,amount:-amount,reason,createdAt,createdBy:G.user.uid});
+  await batch.commit();await audit('gov.grant',{uid:user.id,amount,reason});toast(`Grant of ${fmt(amount)} paid to ${user.username}.`);await loadAll();
+}
+async function adjustTreasury(){
+  if(!requireAdmin('adjust the treasury'))return;
+  const amount=Math.round(Number($('adj-amount').value)*100)/100,note=$('adj-note').value.trim()||'Manual adjustment';
+  if(!amount)return toast('Enter a non-zero amount.',false);
+  const batch=db.batch(),createdAt=now8601();
+  batch.set(db.collection('government').doc('treasury'),{balance:FV.increment(amount),updatedAt:createdAt},{merge:true});
+  batch.set(db.collection('taxLedger').doc(),{type:'adjustment',amount,note,createdAt,createdBy:G.user.uid});
+  await batch.commit();await audit('gov.treasury.adjust',{amount,note});toast('Treasury adjusted.');await loadAll();
+}
+
+/* ── Loans oversight ── */
+function loanEff(l){const s=String(l.status||'pending').toLowerCase();if(['active','approved'].includes(s)&&l.dueDate&&dateFromAny(l.dueDate).getTime()&&dateFromAny(l.dueDate)<new Date()&&Number(l.balance??l.principal??l.amount??0)>0)return 'overdue';return s;}
+function renderGovLoans(){
+  const q=($('gl-search')?.value||'').toLowerCase(),f=$('gl-filter')?.value||'';
+  let list=D.loans.map(l=>({...l,eff:loanEff(l)}));
+  if(q)list=list.filter(l=>String(l.ownerUsername||'').toLowerCase().includes(q));
+  if(f)list=list.filter(l=>f==='paid'?['paid','completed','repaid','denied'].includes(l.eff):l.eff===f);
+  list.sort((a,b)=>({overdue:0,pending:1,active:2}[a.eff]??3)-({overdue:0,pending:1,active:2}[b.eff]??3)||dateFromAny(b.createdAt)-dateFromAny(a.createdAt));
+  const open=D.loans.map(l=>({...l,eff:loanEff(l)})).filter(l=>['active','approved','overdue'].includes(l.eff));
+  const owed=open.reduce((n,l)=>n+Number(l.balance??l.principal??l.amount??0),0);
+  $('gl-totals').innerHTML=`<b>${open.length}</b> open loan(s) · <b>${fmt(owed)}</b> outstanding · <b style="color:${open.filter(l=>l.eff==='overdue').length?'#fca5a5':'inherit'}">${open.filter(l=>l.eff==='overdue').length}</b> overdue`;
+  $('gl-rows').innerHTML=list.slice(0,250).map(l=>{const owedAmt=Number(l.balance??l.principal??l.amount??0);
+    const act=['active','approved','overdue'].includes(l.eff)?`<span class="actions"><button class="btn good sm" title="Deducts the owed balance from the linked account and closes the loan" onclick="govCollectLoan('${l.id}')">Collect & close</button><button class="btn sm" title="Write the loan off without collecting" onclick="govForgiveLoan('${l.id}')">Forgive</button></span>`:'';
+    return `<tr><td><b>${esc(l.ownerUsername||'Member')}</b></td><td class="num">${fmt(l.principal||l.amount)}</td><td class="num">${fmt(owedAmt)}</td><td>${Number(l.interestRate||0)}%</td><td>${esc(l.dueDate||'—')}</td><td>${statusPill(l.eff)}</td><td>${act}</td></tr>`;
+  }).join('')||'<tr><td colspan="7" class="empty">No loans match this filter.</td></tr>';
+}
+async function govCollectLoan(id){if(!requireAdmin('collect loans'))return;const l=D.loans.find(x=>x.id===id);if(!l)return;const owedAmt=Number(l.balance??l.principal??l.amount??0);if(!confirm(`Collect ${fmt(owedAmt)} from ${l.ownerUsername||'the borrower'} and close this loan?`))return;const batch=db.batch();if(l.accountId&&owedAmt>0){batch.update(db.collection('accounts').doc(l.accountId),{balance:FV.increment(-owedAmt),updatedAt:now8601()});batch.set(db.collection('transactions').doc(),{accountId:l.accountId,ownerUid:l.ownerUid,ownerUsername:l.ownerUsername,bank:'IUB',type:'loan_repayment',amount:owedAmt,description:'Loan collected in full by the U.U.R. Government',createdAt:now8601(),createdBy:G.user.uid});}batch.update(db.collection('loans').doc(id),{status:'paid',balance:0,paidAt:now8601(),closedBy:G.user.uid});await batch.commit();await audit('gov.loan.collect',{loanId:id,amount:owedAmt});toast('Loan collected and closed.');await loadAll();}
+async function govForgiveLoan(id){if(!requireAdmin('forgive loans'))return;if(!confirm('Forgive this loan with no collection?'))return;await db.collection('loans').doc(id).update({status:'paid',balance:0,forgiven:true,paidAt:now8601(),closedBy:G.user.uid});await audit('gov.loan.forgive',{loanId:id});toast('Loan forgiven.');await loadAll();}
+
+/* ── Casino fiscal ── */
+function renderCasinoFiscal(){
+  const s=D.casino||{},hn=Number(D.house.houseNet||0),lim=Math.max(1,Number(s.maxHouseLoss||100000000));
+  const used=Math.min(100,Math.max(0,-hn/lim*100)),locked=s.houseProtection!==false&&hn<=-lim;
+  const casinoTax=D.ledger.filter(l=>l.type==='casino_winnings_tax').reduce((n,l)=>n+Number(l.amount||0),0);
+  $('casino-kpis').innerHTML=`<div class="card kpi"><div class="k">Lifetime house result</div><div class="v" style="color:${hn>=0?'#9df0b8':'#fca5a5'}">${hn>=0?'+':''}${fmt(hn)}</div><div class="s">${Number(D.house.plays||0).toLocaleString()} plays recorded on the ledger</div></div><div class="card kpi"><div class="k">Protection limit</div><div class="v">${fmt(lim)}</div><div class="s">${s.houseProtection===false?'PROTECTION DISABLED':'floor locks when losses reach this'}</div></div><div class="card kpi"><div class="k">Casino tax collected</div><div class="v">${fmt(casinoTax)}</div><div class="s">from the ${Number(s.winningsTaxPct??10)}% winnings tax (recent ledger)</div></div>`;
+  $('casino-meter').innerHTML=`<div class="mini-row"><span>Protection limit used</span><b class="mono" style="color:${used>75?'#fca5a5':used>40?'#fcd34d':'#9df0b8'}">${used.toFixed(1)}%</b></div><div style="height:9px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden"><span style="display:block;height:100%;width:${used}%;background:${used>75?'#ef4444':used>40?'#f59e0b':'#22c55e'}"></span></div>${locked?'<div class="notice" style="margin-top:10px;border-color:#ef4444;background:rgba(239,68,68,.07);color:#fecaca"><b>FLOOR LOCKED.</b> House losses reached the protection limit. Review the odds, then reset the house ledger to reopen.</div>':''}`;
+  const winners={};for(const p of D.plays){if(Number(p.net||0)>0){winners[p.ownerUsername]=(winners[p.ownerUsername]||0)+Number(p.net||0);}}
+  $('casino-winners').innerHTML=Object.entries(winners).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([u,n])=>`<div class="mini-row"><span><b>${esc(u)}</b></span><b class="mono" style="color:#f0d894">+${fmt(n)}</b></div>`).join('')||'<div class="empty">No recent winning players.</div>';
+  $('gc-wtax').value=s.winningsTaxPct??10;$('gc-maxloss').value=s.maxHouseLoss??100000000;$('gc-protect').value=s.houseProtection===false?'0':'1';$('gc-maxbet').value=s.maxBet??1000;
+}
+async function saveCasinoFiscal(){
+  if(!requireAdmin('publish casino fiscal controls'))return;
+  await db.collection('casino').doc('settings').set({winningsTaxPct:clamp($('gc-wtax').value,0,90),maxHouseLoss:Math.max(1,Number($('gc-maxloss').value)||100000000),houseProtection:$('gc-protect').value==='1',maxBet:Math.max(1,Number($('gc-maxbet').value)||1000),updatedAt:now8601(),updatedBy:G.user.uid},{merge:true});
+  await audit('gov.casino.fiscal',{});toast('Casino fiscal controls published.');await loadAll();
+}
+async function govResetHouse(){
+  if(!requireAdmin('reset the house ledger'))return;
+  if(!confirm('Zero the lifetime house profit/loss counter and reopen the floor? Play history is kept.'))return;
+  await db.collection('casino').doc('house').set({houseNet:0,resetAt:now8601(),resetBy:G.user.uid},{merge:true});
+  await audit('gov.casino.houseReset',{});toast('House ledger reset — the floor is open.');await loadAll();
+}
+
+/* ── Policy, levy, fines, decrees ── */
+function renderPolicy(){$('pol-personal').value=D.policy.personalTaxRatePct??10;$('pol-business').value=D.policy.businessTaxRatePct??15;}
+async function savePolicyRates(){
+  if(!requireAdmin('publish tax policy'))return;
+  const p=clamp($('pol-personal').value,0,95),b=clamp($('pol-business').value,0,95);
+  await db.collection('economicPolicy').doc('settings').set({personalTaxRatePct:p,personalIncomeTaxPct:p,businessTaxRatePct:b,updatedAt:now8601(),updatedBy:authenticatedUid()},{merge:true});
+  await audit('gov.policy.rates',{p,b});toast('Tax rates published network-wide.');await loadAll();
+}
+let WL=null;
+function previewWealthLevy(){
+  const threshold=Math.max(0,Number($('wl-threshold').value)||0),rate=clamp($('wl-rate').value,0,95);
+  const hits=D.accounts.filter(a=>String(a.status||'active')==='active'&&accountCurrency(a)!=='VF'&&Number(a.balance||0)>threshold)
+    .map(a=>({a,levy:Math.round((Number(a.balance)-threshold)*rate)/100})).filter(x=>x.levy>=0.01).sort((x,y)=>y.levy-x.levy);
+  WL={threshold,rate,hits};
+  const total=hits.reduce((n,x)=>n+x.levy,0);
+  $('wl-preview').innerHTML=hits.length?`<div class="notice"><b>${hits.length}</b> account(s) affected · treasury would gain <b>${fmt(total)}</b></div>`+hits.slice(0,10).map(x=>`<div class="mini-row"><span><b>${esc(x.a.ownerUsername||'Member')}</b> · ${esc(bankName(x.a))}<br><span class="muted">balance ${fmt(x.a.balance)}</span></span><b class="mono" style="color:#fca5a5">−${fmt(x.levy)}</b></div>`).join('')+(hits.length>10?`<div class="sub" style="margin-top:6px">…and ${hits.length-10} more.</div>`:'')+`<button class="btn bad full" style="margin-top:10px" onclick="executeWealthLevy()">Confirm — levy ${fmt(total)} now</button>`:'<div class="empty">No Emerul accounts above that threshold.</div>';
+}
+async function executeWealthLevy(){
+  if(!requireAdmin('levy a wealth tax'))return;if(!WL||!WL.hits.length)return;
+  if(!confirm(`Execute the ${WL.rate}% wealth levy on balances above ${fmt(WL.threshold)}? This deducts from ${WL.hits.length} account(s) immediately.`))return;
+  const createdAt=now8601();let total=0;const chunks=[];
+  for(let i=0;i<WL.hits.length;i+=100)chunks.push(WL.hits.slice(i,i+100));
+  for(const chunk of chunks){
+    const batch=db.batch();
+    for(const {a,levy} of chunk){
+      total+=levy;
+      batch.update(db.collection('accounts').doc(a.id),{balance:FV.increment(-levy),updatedAt:createdAt});
+      batch.set(db.collection('transactions').doc(),{accountId:a.id,ownerUid:a.ownerUid,ownerUsername:a.ownerUsername,bank:bankName(a),type:'wealth_tax',amount:levy,description:`U.U.R. wealth levy — ${WL.rate}% of balance above ${fmt(WL.threshold)}`,createdAt,createdBy:G.user.uid});
+      batch.set(db.collection('taxLedger').doc(),{type:'wealth_tax',ownerUid:a.ownerUid,ownerUsername:a.ownerUsername,amount:levy,reason:`${WL.rate}% above ${fmt(WL.threshold)}`,createdAt,createdBy:G.user.uid});
+    }
+    await batch.commit();
+  }
+  await db.collection('government').doc('treasury').set({balance:FV.increment(Math.round(total*100)/100),updatedAt:createdAt},{merge:true});
+  await audit('gov.wealthLevy',{threshold:WL.threshold,rate:WL.rate,accounts:WL.hits.length,total});
+  toast(`Wealth levy complete — ${fmt(total)} to the treasury.`);WL=null;$('wl-preview').innerHTML='';await loadAll();
+}
+async function issueFine(){
+  if(!requireAdmin('issue fines'))return;
+  const uname=normalizeUsername($('fine-user').value),amount=Math.round(Number($('fine-amount').value)*100)/100,reason=$('fine-reason').value.trim();
+  const user=D.users.find(u=>normalizeUsername(u.username)===uname);if(!user)return toast('Member not found.',false);
+  if(!(amount>0))return toast('Enter a valid amount.',false);if(reason.length<3)return toast('Give a reason — it appears on their statement.',false);
+  const acct=biggestAccount(user.id);if(!acct)return toast('Member has no active Emerul account.',false);
+  if(!confirm(`Fine ${user.username} ${fmt(amount)} for “${reason}”?`))return;
+  const batch=db.batch(),createdAt=now8601();
+  batch.update(db.collection('accounts').doc(acct.id),{balance:FV.increment(-amount),updatedAt:createdAt});
+  batch.set(db.collection('transactions').doc(),{accountId:acct.id,ownerUid:user.id,ownerUsername:user.username,bank:bankName(acct),type:'government_fine',amount,description:`U.U.R. Government fine — ${reason}`,createdAt,createdBy:G.user.uid});
+  batch.set(db.collection('government').doc('treasury'),{balance:FV.increment(amount),updatedAt:createdAt},{merge:true});
+  batch.set(db.collection('taxLedger').doc(),{type:'fine',ownerUid:user.id,ownerUsername:user.username,amount,reason,createdAt,createdBy:G.user.uid});
+  await batch.commit();await audit('gov.fine',{uid:user.id,amount,reason});toast(`Fine of ${fmt(amount)} collected.`);await loadAll();
+}
+async function publishDecree(){
+  if(!requireAdmin('publish decrees'))return;
+  const title=$('decree-title').value.trim(),body=$('decree-body').value.trim(),severity=$('decree-severity').value;
+  if(title.length<3||body.length<5)return toast('Give the decree a title and a message.',false);
+  await db.collection('networkNotices').add({title,body,severity,active:true,source:'government',createdAt:now8601(),createdBy:G.user.uid,createdByUsername:G.username});
+  await audit('gov.decree',{title,severity});toast('Decree published across the network.');$('decree-title').value='';$('decree-body').value='';
+}
+
+/* ── Overview ── */
+function renderOverview(){
+  const rev=D.ledger.filter(l=>Number(l.amount)>0&&!/grant/.test(String(l.type))).reduce((n,l)=>n+Number(l.amount||0),0);
+  const open=D.loans.map(l=>({...l,eff:loanEff(l)})).filter(l=>['active','approved','overdue'].includes(l.eff));
+  const owed=open.reduce((n,l)=>n+Number(l.balance??l.principal??l.amount??0),0);
+  const hn=Number(D.house.houseNet||0);
+  $('gov-kpis').innerHTML=`<div class="card kpi"><div class="k">National treasury</div><div class="v">${fmt(D.treasury.balance||0)}</div><div class="s">grows automatically from taxes</div></div><div class="card kpi"><div class="k">Revenue recorded</div><div class="v">${fmt(rev)}</div><div class="s">recent ledger entries, all sources</div></div><div class="card kpi"><div class="k">Loans outstanding</div><div class="v">${fmt(owed)}</div><div class="s">${open.length} open · ${open.filter(l=>l.eff==='overdue').length} overdue</div></div><div class="card kpi"><div class="k">Casino house result</div><div class="v" style="color:${hn>=0?'#9df0b8':'#fca5a5'}">${hn>=0?'+':''}${fmt(hn)}</div><div class="s">protection at −${fmt(Math.max(1,Number(D.casino.maxHouseLoss||100000000)))}</div></div>`;
+  const by={};for(const l of D.ledger){if(Number(l.amount)<=0)continue;by[l.type]=(by[l.type]||0)+Number(l.amount||0);}
+  $('revenue-breakdown').innerHTML=Object.entries(by).sort((a,b)=>b[1]-a[1]).map(([t,n])=>`<div class="mini-row"><span>${esc(String(t).replace(/_/g,' '))}</span><b class="mono">${fmt(n)}</b></div>`).join('')||'<div class="empty">No revenue yet. It starts flowing the moment someone wins at the casino or a tax is collected.</div>';
+  const alerts=[];
+  const s=D.casino||{},lim=Math.max(1,Number(s.maxHouseLoss||100000000));
+  if(s.houseProtection!==false&&hn<=-lim)alerts.push(['bad',`TREASURY LOCK — the casino floor is closed. House losses (${fmt(-hn)}) reached the ${fmt(lim)} limit. Review odds, then reset the house ledger on the Casino tab.`]);
+  else if(hn<=-lim*0.75)alerts.push(['warn',`Casino house losses at ${(-hn/lim*100).toFixed(0)}% of the protection limit.`]);
+  const overdue=open.filter(l=>l.eff==='overdue');if(overdue.length)alerts.push(['warn',`${overdue.length} loan(s) overdue for a combined ${fmt(overdue.reduce((n,l)=>n+Number(l.balance??l.principal??0),0))}.`]);
+  if(Number(D.treasury.balance||0)<0)alerts.push(['bad','The treasury is overdrawn.']);
+  if((D.policy.personalTaxRatePct??null)===null)alerts.push(['warn','No tax rates published yet — set them on the Levies tab.']);
+  $('gov-alerts').innerHTML=alerts.map(([lv,t])=>`<div class="notice" style="${lv==='bad'?'border-color:#ef4444;background:rgba(239,68,68,.07);color:#fecaca':''}">${esc(t)}</div>`).join('')||'<div class="notice">No fiscal alerts. The Union prospers.</div>';
+}
+
+bootPage({brand:'GOV',async onReady(){
+  if(!isAdmin()){document.querySelector('.gate-card h1').textContent='Government clearance denied';document.querySelector('.gate-card p').textContent='This account is signed in, but it is not recognized as an administrator of the Union.';return;}
+  $('gate').style.display='none';$('app').style.display='block';
+  $('gov-user').textContent=G.username;$('gov-badge').textContent=isHeadAdmin()?'HEAD ADMIN':'ADMIN';
+  mountSwitcher('GOV');
+  await loadAll();
+}});
+</script>
+</body>
+</html>
